@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+@layer base {
+  @media print {
+    body {
+      background-color: white !important;
+      color: #0f172a !important;
+    }
+
+    @page {
+      margin: 12mm;
+      size: A4 portrait;
+    }
+  }
+}

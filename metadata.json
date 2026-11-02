@@ -1,0 +1,6 @@
+{
+  "name": "LabPro Medical LIS",
+  "description": "Universal Multi-Tenant Medical Laboratory Information System for diagnostic centers, hospitals, and clinical laboratories.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

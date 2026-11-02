@@ -1,0 +1,155 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Connection health check document
+    match /test/connection {
+      allow read: if true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // User Profiles & Lab Memberships
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId);
+      allow list: if isSignedIn();
+      allow create, update: if isSignedIn() && isValidId(userId)
+        && (request.auth.uid == userId || request.resource.data.uid == request.auth.uid);
+    }
+
+    // Public SaaS Subscription Plans
+    match /subscriptionPlans/{planId} {
+      allow get, list: if true;
+      allow create, update, delete: if isSignedIn();
+    }
+
+    // Tenant Subscriptions
+    match /subscriptions/{subId} {
+      allow get, list: if isSignedIn();
+      allow create, update: if isSignedIn();
+    }
+
+    // SaaS Payment Transactions
+    match /payments/{paymentId} {
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+    }
+
+    // Platform Super Admin Registry
+    match /platformAdmins/{adminId} {
+      allow get, list: if isSignedIn();
+      allow create, update: if isSignedIn();
+    }
+
+    // Staff Invitations
+    match /invitations/{inviteId} {
+      allow get, list: if isSignedIn();
+      allow create, update: if isSignedIn();
+    }
+
+    // Laboratory Tenant Gate
+    match /laboratories/{labId} {
+      allow get: if isSignedIn() && isValidId(labId);
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(labId)
+        && request.resource.data.name is string && request.resource.data.name.size() <= 128;
+      allow update: if isSignedIn() && isValidId(labId);
+
+      // Subcollection: Departments
+      match /departments/{departmentId} {
+        allow get, list: if isSignedIn() && isValidId(labId);
+        allow create, update: if isSignedIn() && isValidId(labId) && isValidId(departmentId)
+          && request.resource.data.labId == labId;
+        allow delete: if isSignedIn() && isValidId(labId) && isValidId(departmentId);
+      }
+
+      // Subcollection: Patients
+      match /patients/{patientId} {
+        allow get: if isSignedIn() && isValidId(labId) && isValidId(patientId);
+        allow list: if isSignedIn() && isValidId(labId);
+        allow create: if isSignedIn() && isValidId(labId) && isValidId(patientId)
+          && request.resource.data.labId == labId
+          && request.resource.data.fullName is string
+          && request.resource.data.fullName.size() <= 128;
+        allow update: if isSignedIn() && isValidId(labId) && isValidId(patientId)
+          && request.resource.data.labId == labId;
+        allow delete: if isSignedIn() && isValidId(labId) && isValidId(patientId);
+      }
+
+      // Subcollection: Tests Catalogue
+      match /tests/{testId} {
+        allow get: if isSignedIn() && isValidId(labId) && isValidId(testId);
+        allow list: if isSignedIn() && isValidId(labId);
+        allow create, update: if isSignedIn() && isValidId(labId) && isValidId(testId)
+          && request.resource.data.labId == labId
+          && request.resource.data.name is string;
+        allow delete: if isSignedIn() && isValidId(labId) && isValidId(testId);
+      }
+
+      // Subcollection: Requests
+      match /requests/{requestId} {
+        allow get: if isSignedIn() && isValidId(labId) && isValidId(requestId);
+        allow list: if isSignedIn() && isValidId(labId);
+        allow create: if isSignedIn() && isValidId(labId) && isValidId(requestId)
+          && request.resource.data.labId == labId
+          && request.resource.data.requestNumber is string;
+        allow update: if isSignedIn() && isValidId(labId) && isValidId(requestId)
+          && request.resource.data.labId == labId;
+        allow delete: if isSignedIn() && isValidId(labId) && isValidId(requestId);
+      }
+
+      // Subcollection: Samples
+      match /samples/{sampleId} {
+        allow get: if isSignedIn() && isValidId(labId) && isValidId(sampleId);
+        allow list: if isSignedIn() && isValidId(labId);
+        allow create, update: if isSignedIn() && isValidId(labId) && isValidId(sampleId)
+          && request.resource.data.labId == labId;
+        allow delete: if isSignedIn() && isValidId(labId) && isValidId(sampleId);
+      }
+
+      // Subcollection: Results
+      match /results/{resultId} {
+        allow get: if isSignedIn() && isValidId(labId) && isValidId(resultId);
+        allow list: if isSignedIn() && isValidId(labId);
+        allow create, update: if isSignedIn() && isValidId(labId) && isValidId(resultId)
+          && request.resource.data.labId == labId;
+        allow delete: if isSignedIn() && isValidId(labId) && isValidId(resultId);
+      }
+
+      // Subcollection: Invoices
+      match /invoices/{invoiceId} {
+        allow get: if isSignedIn() && isValidId(labId) && isValidId(invoiceId);
+        allow list: if isSignedIn() && isValidId(labId);
+        allow create, update: if isSignedIn() && isValidId(labId) && isValidId(invoiceId)
+          && request.resource.data.labId == labId;
+        allow delete: if isSignedIn() && isValidId(labId) && isValidId(invoiceId);
+      }
+
+      // Subcollection: Audit Logs
+      match /auditLogs/{logId} {
+        allow get: if isSignedIn() && isValidId(labId) && isValidId(logId);
+        allow list: if isSignedIn() && isValidId(labId);
+        allow create: if isSignedIn() && isValidId(labId) && isValidId(logId)
+          && request.resource.data.labId == labId;
+      }
+
+      // Subcollection: Staff
+      match /staff/{staffId} {
+        allow get, list: if isSignedIn() && isValidId(labId);
+        allow create, update: if isSignedIn() && isValidId(labId) && isValidId(staffId);
+      }
+    }
+  }
+}

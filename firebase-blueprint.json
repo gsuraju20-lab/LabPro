@@ -1,0 +1,335 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User account profile with laboratory affiliation and role.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 128 },
+        "displayName": { "type": "string", "maxLength": 128 },
+        "role": { "type": "string", "enum": ["super_admin", "lab_admin", "receptionist", "lab_scientist", "lab_supervisor", "pathologist", "accountant"] },
+        "labId": { "type": "string", "maxLength": 128 },
+        "licenseNumber": { "type": "string", "maxLength": 64 },
+        "lastLoginAt": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["uid", "email", "role", "labId"]
+    },
+    "Laboratory": {
+      "title": "Laboratory",
+      "description": "Tenant entity representing an independent medical diagnostic laboratory.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 128 },
+        "code": { "type": "string", "maxLength": 32 },
+        "licenseNumber": { "type": "string", "maxLength": 64 },
+        "email": { "type": "string", "maxLength": 128 },
+        "phone": { "type": "string", "maxLength": 32 },
+        "address": { "type": "string", "maxLength": 256 },
+        "currency": { "type": "string", "maxLength": 10 },
+        "currencySymbol": { "type": "string", "maxLength": 10 },
+        "logoUrl": { "type": "string", "maxLength": 512 },
+        "headerNote": { "type": "string", "maxLength": 256 },
+        "footerNote": { "type": "string", "maxLength": 256 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "name", "code", "currency", "currencySymbol", "createdAt"]
+    },
+    "Department": {
+      "title": "Department",
+      "description": "Configurable clinical department within a laboratory.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "labId": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 128 },
+        "code": { "type": "string", "maxLength": 32 },
+        "description": { "type": "string", "maxLength": 512 },
+        "isActive": { "type": "boolean" }
+      },
+      "required": ["id", "labId", "name", "code", "isActive"]
+    },
+    "Patient": {
+      "title": "Patient",
+      "description": "Patient registered in a specific laboratory tenant.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "labId": { "type": "string", "maxLength": 128 },
+        "patientIdNumber": { "type": "string", "maxLength": 64 },
+        "fullName": { "type": "string", "maxLength": 128 },
+        "dateOfBirth": { "type": "string", "maxLength": 32 },
+        "gender": { "type": "string", "enum": ["male", "female", "other"] },
+        "bloodGroup": { "type": "string", "maxLength": 10 },
+        "phone": { "type": "string", "maxLength": 32 },
+        "email": { "type": "string", "maxLength": 128 },
+        "address": { "type": "string", "maxLength": 256 },
+        "emergencyContact": { "type": "string", "maxLength": 128 },
+        "clinicalNotes": { "type": "string", "maxLength": 512 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "labId", "patientIdNumber", "fullName", "dateOfBirth", "gender", "createdAt"]
+    },
+    "TestDefinition": {
+      "title": "TestDefinition",
+      "description": "A configurable test catalogue item owned by a laboratory.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "labId": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 128 },
+        "code": { "type": "string", "maxLength": 32 },
+        "department": { "type": "string", "maxLength": 64 },
+        "description": { "type": "string", "maxLength": 512 },
+        "specimenType": { "type": "string", "maxLength": 64 },
+        "container": { "type": "string", "maxLength": 64 },
+        "method": { "type": "string", "maxLength": 64 },
+        "price": { "type": "number" },
+        "turnaroundHours": { "type": "number" },
+        "parameters": { "type": "string" },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "labId", "name", "code", "department", "specimenType", "price", "isActive", "createdAt"]
+    },
+    "TestRequest": {
+      "title": "TestRequest",
+      "description": "A diagnostic request containing multiple tests for a patient.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "labId": { "type": "string", "maxLength": 128 },
+        "requestNumber": { "type": "string", "maxLength": 64 },
+        "patientId": { "type": "string", "maxLength": 128 },
+        "patientName": { "type": "string", "maxLength": 128 },
+        "referringDoctor": { "type": "string", "maxLength": 128 },
+        "clinicalIndication": { "type": "string", "maxLength": 256 },
+        "priority": { "type": "string", "enum": ["routine", "urgent", "stat"] },
+        "status": { "type": "string", "enum": ["registered", "sample_collected", "processing", "results_entered", "verified", "completed"] },
+        "paymentStatus": { "type": "string", "enum": ["paid", "partial", "unpaid"] },
+        "totalAmount": { "type": "number" },
+        "amountPaid": { "type": "number" },
+        "discount": { "type": "number" },
+        "testIds": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "labId", "requestNumber", "patientId", "priority", "status", "paymentStatus", "totalAmount", "createdAt"]
+    },
+    "Sample": {
+      "title": "Sample",
+      "description": "A biological specimen collected for a test request.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "labId": { "type": "string", "maxLength": 128 },
+        "sampleBarcode": { "type": "string", "maxLength": 64 },
+        "requestId": { "type": "string", "maxLength": 128 },
+        "patientId": { "type": "string", "maxLength": 128 },
+        "specimenType": { "type": "string", "maxLength": 64 },
+        "container": { "type": "string", "maxLength": 64 },
+        "status": { "type": "string", "enum": ["pending_collection", "collected", "received", "processing", "rejected"] },
+        "collectedAt": { "type": "string", "maxLength": 64 },
+        "collectedBy": { "type": "string", "maxLength": 128 },
+        "receivedAt": { "type": "string", "maxLength": 64 },
+        "rejectionReason": { "type": "string", "maxLength": 256 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "labId", "sampleBarcode", "requestId", "patientId", "specimenType", "status", "createdAt"]
+    },
+    "TestResult": {
+      "title": "TestResult",
+      "description": "Entered clinical test results with verification status.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "labId": { "type": "string", "maxLength": 128 },
+        "requestId": { "type": "string", "maxLength": 128 },
+        "testId": { "type": "string", "maxLength": 128 },
+        "testName": { "type": "string", "maxLength": 128 },
+        "sampleId": { "type": "string", "maxLength": 128 },
+        "patientId": { "type": "string", "maxLength": 128 },
+        "status": { "type": "string", "enum": ["draft", "submitted", "verified", "rejected", "amended"] },
+        "parameterValues": { "type": "string" },
+        "technicianComments": { "type": "string", "maxLength": 512 },
+        "verificationComments": { "type": "string", "maxLength": 512 },
+        "enteredBy": { "type": "string", "maxLength": 128 },
+        "enteredAt": { "type": "string", "maxLength": 64 },
+        "verifiedBy": { "type": "string", "maxLength": 128 },
+        "verifiedAt": { "type": "string", "maxLength": 64 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "labId", "requestId", "testId", "sampleId", "status", "createdAt"]
+    },
+    "Invoice": {
+      "title": "Invoice",
+      "description": "Billing statement for a test request.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "labId": { "type": "string", "maxLength": 128 },
+        "invoiceNumber": { "type": "string", "maxLength": 64 },
+        "requestId": { "type": "string", "maxLength": 128 },
+        "patientId": { "type": "string", "maxLength": 128 },
+        "totalAmount": { "type": "number" },
+        "paidAmount": { "type": "number" },
+        "balance": { "type": "number" },
+        "status": { "type": "string", "enum": ["paid", "partial", "unpaid"] },
+        "paymentMethod": { "type": "string", "maxLength": 64 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "labId", "invoiceNumber", "requestId", "patientId", "totalAmount", "status", "createdAt"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Traceable clinical and administrative activity record.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "labId": { "type": "string", "maxLength": 128 },
+        "action": { "type": "string", "maxLength": 64 },
+        "entityType": { "type": "string", "maxLength": 64 },
+        "entityId": { "type": "string", "maxLength": 128 },
+        "performedBy": { "type": "string", "maxLength": 128 },
+        "userRole": { "type": "string", "maxLength": 64 },
+        "details": { "type": "string", "maxLength": 512 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "labId", "action", "entityType", "entityId", "performedBy", "createdAt"]
+    },
+    "SubscriptionPlan": {
+      "title": "SubscriptionPlan",
+      "description": "Configurable SaaS subscription tiers with pricing and limits.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "name": { "type": "string", "maxLength": 128 },
+        "tagline": { "type": "string", "maxLength": 256 },
+        "monthlyPrice": { "type": "number" },
+        "annualPrice": { "type": "number" },
+        "currency": { "type": "string", "maxLength": 10 },
+        "currencySymbol": { "type": "string", "maxLength": 10 },
+        "trialDays": { "type": "number" },
+        "isActive": { "type": "boolean" }
+      },
+      "required": ["id", "name", "monthlyPrice", "currency", "isActive"]
+    },
+    "LaboratorySubscription": {
+      "title": "LaboratorySubscription",
+      "description": "Active subscription and billing terms for a laboratory tenant.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "labId": { "type": "string", "maxLength": 128 },
+        "planId": { "type": "string", "maxLength": 64 },
+        "planName": { "type": "string", "maxLength": 128 },
+        "billingCycle": { "type": "string", "enum": ["monthly", "annual"] },
+        "status": { "type": "string", "enum": ["trial", "active", "pending_payment", "grace_period", "expired", "cancelled"] },
+        "amount": { "type": "number" },
+        "currency": { "type": "string", "maxLength": 10 },
+        "currencySymbol": { "type": "string", "maxLength": 10 },
+        "startDate": { "type": "string" },
+        "currentPeriodEnd": { "type": "string" },
+        "autoRenew": { "type": "boolean" },
+        "paymentProvider": { "type": "string", "maxLength": 64 },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "labId", "planId", "status", "startDate", "currentPeriodEnd"]
+    },
+    "PaymentTransaction": {
+      "title": "PaymentTransaction",
+      "description": "Payment gateway transaction records for platform subscriptions.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "labId": { "type": "string", "maxLength": 128 },
+        "laboratoryName": { "type": "string", "maxLength": 128 },
+        "planId": { "type": "string", "maxLength": 64 },
+        "amount": { "type": "number" },
+        "currency": { "type": "string", "maxLength": 10 },
+        "status": { "type": "string", "enum": ["pending", "success", "failed", "abandoned"] },
+        "provider": { "type": "string", "enum": ["paystack", "flutterwave"] },
+        "reference": { "type": "string", "maxLength": 128 },
+        "customerEmail": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "labId", "planId", "amount", "status", "provider", "reference", "createdAt"]
+    },
+    "PlatformAdmin": {
+      "title": "PlatformAdmin",
+      "description": "Super administrator managing the overall SaaS platform.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 128 },
+        "fullName": { "type": "string", "maxLength": 128 },
+        "role": { "type": "string", "enum": ["platform_super_admin"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "email", "fullName", "role", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profiles and laboratory role memberships."
+    },
+    "/subscriptionPlans/{planId}": {
+      "schema": "SubscriptionPlan",
+      "description": "Public SaaS pricing tiers and feature allocations."
+    },
+    "/subscriptions/{subId}": {
+      "schema": "LaboratorySubscription",
+      "description": "Active tenant subscription records."
+    },
+    "/payments/{paymentId}": {
+      "schema": "PaymentTransaction",
+      "description": "SaaS payment gateway billing records."
+    },
+    "/platformAdmins/{adminId}": {
+      "schema": "PlatformAdmin",
+      "description": "Platform super administrator authorization records."
+    },
+    "/laboratories/{labId}": {
+      "schema": "Laboratory",
+      "description": "Core tenant laboratory configuration and settings."
+    },
+    "/laboratories/{labId}/departments/{departmentId}": {
+      "schema": "Department",
+      "description": "Configurable clinical departments within the laboratory."
+    },
+    "/laboratories/{labId}/patients/{patientId}": {
+      "schema": "Patient",
+      "description": "Patients registered within the specific laboratory tenant."
+    },
+    "/laboratories/{labId}/tests/{testId}": {
+      "schema": "TestDefinition",
+      "description": "Configurable test catalogue for the laboratory."
+    },
+    "/laboratories/{labId}/requests/{requestId}": {
+      "schema": "TestRequest",
+      "description": "Diagnostic test requests raised for laboratory patients."
+    },
+    "/laboratories/{labId}/samples/{sampleId}": {
+      "schema": "Sample",
+      "description": "Physical biological specimens collected and tracked in the lab."
+    },
+    "/laboratories/{labId}/results/{resultId}": {
+      "schema": "TestResult",
+      "description": "Diagnostic test results and verified report payloads."
+    },
+    "/laboratories/{labId}/invoices/{invoiceId}": {
+      "schema": "Invoice",
+      "description": "Billing invoices and payment records."
+    },
+    "/laboratories/{labId}/auditLogs/{logId}": {
+      "schema": "AuditLog",
+      "description": "System and clinical audit trails."
+    }
+  }
+}
