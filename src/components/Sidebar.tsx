@@ -16,6 +16,7 @@ import {
   Sparkles,
   Globe,
   Shield,
+  X,
 } from 'lucide-react';
 import { useLIS } from '../context/LISContext';
 
@@ -38,6 +39,7 @@ interface SidebarProps {
   onSelectTab: (tab: NavTab) => void;
   onOpenLanding?: () => void;
   onOpenPlatformAdmin?: () => void;
+  onCloseMobile?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -45,8 +47,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelectTab,
   onOpenLanding,
   onOpenPlatformAdmin,
+  onCloseMobile,
 }) => {
-  const { currentLab, currentRole, samples, results, requests } = useLIS();
+  const { currentLab, currentRole, samples, results, requests, isPlatformSuperAdmin } = useLIS();
 
   const pendingSamplesCount = samples.filter((s) => s.status === 'collected' || s.status === 'pending_collection').length;
   const pendingResultsCount = requests.filter((r) => r.status === 'processing' || r.status === 'sample_collected').length;
@@ -124,39 +127,48 @@ export const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   return (
-    <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col shrink-0 border-r border-slate-800 select-none">
+    <aside className="w-72 lg:w-64 max-w-[85vw] h-full bg-slate-900 text-slate-300 flex flex-col shrink-0 border-r border-slate-800 select-none">
       {/* Brand Header */}
-      <div className="p-4 border-b border-slate-800 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-teal-600 flex items-center justify-center text-white shadow-md shadow-teal-900/40">
+      <div className="p-4 border-b border-slate-800 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-9 h-9 rounded-lg bg-teal-600 flex items-center justify-center text-white shadow-md shadow-teal-900/40 shrink-0">
             <Activity className="w-5 h-5 text-white stroke-[2.5]" />
           </div>
-          <div>
+          <div className="min-w-0">
             <div className="flex items-center gap-1.5">
               <span className="font-bold text-base text-white tracking-tight">LabPro</span>
-              <span className="text-[10px] font-semibold uppercase px-1.5 py-0.2 rounded bg-teal-500/20 text-teal-300 border border-teal-500/30">
+              <span className="text-[10px] font-semibold uppercase px-1.5 py-0.2 rounded bg-teal-500/20 text-teal-300 border border-teal-500/30 shrink-0">
                 LIS v4.2
               </span>
             </div>
-            <p className="text-[11px] text-slate-400 font-medium">Clinical Laboratory System</p>
+            <p className="text-[11px] text-slate-400 font-medium truncate">Clinical Laboratory System</p>
           </div>
         </div>
+        {onCloseMobile && (
+          <button
+            onClick={onCloseMobile}
+            aria-label="Close navigation menu"
+            className="lg:hidden min-w-[40px] min-h-[40px] flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors shrink-0"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        )}
       </div>
 
       {/* Active Tenant Card */}
       <div className="mx-3 my-3 p-2.5 rounded-lg bg-slate-800/80 border border-slate-700/60">
         <div className="flex items-center gap-2 text-slate-400 text-xs mb-1">
-          <Building2 className="w-3.5 h-3.5 text-teal-400" />
+          <Building2 className="w-3.5 h-3.5 text-teal-400 shrink-0" />
           <span className="text-[11px] font-medium uppercase tracking-wider text-slate-400">Current Workspace</span>
         </div>
         <p className="font-semibold text-xs text-white truncate" title={currentLab.name}>
           {currentLab.name}
         </p>
-        <div className="flex items-center justify-between mt-1 text-[11px]">
-          <span className="font-mono text-teal-300 bg-teal-950/60 px-1 rounded border border-teal-800/40">
+        <div className="flex items-center justify-between gap-2 mt-1 text-[11px]">
+          <span className="font-mono text-teal-300 bg-teal-950/60 px-1 rounded border border-teal-800/40 shrink-0">
             {currentLab.code}
           </span>
-          <span className="text-slate-400">ID: {currentLab.id}</span>
+          <span className="text-slate-400 truncate">ID: {currentLab.id}</span>
         </div>
       </div>
 
@@ -171,8 +183,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
           return (
             <button
               key={item.id}
-              onClick={() => onSelectTab(item.id)}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium transition-all ${
+              onClick={() => {
+                onSelectTab(item.id);
+                onCloseMobile?.();
+              }}
+              className={`w-full flex items-center justify-between px-3 py-2.5 lg:py-2 rounded-md text-xs font-medium transition-all ${
                 isActive
                   ? 'bg-teal-600 text-white shadow-xs font-semibold'
                   : 'text-slate-300 hover:bg-slate-800 hover:text-white'
@@ -184,7 +199,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </div>
               {item.badge !== undefined && (
                 <span
-                  className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full text-white ${item.badgeColor || 'bg-slate-700'}`}
+                  className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full text-white shrink-0 ${item.badgeColor || 'bg-slate-700'}`}
                 >
                   {item.badge}
                 </span>
@@ -198,19 +213,25 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className="p-3 border-t border-slate-800/80 bg-slate-950/40 space-y-1 text-xs">
         {onOpenLanding && (
           <button
-            onClick={onOpenLanding}
-            className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors text-[11px]"
+            onClick={() => {
+              onOpenLanding();
+              onCloseMobile?.();
+            }}
+            className="w-full flex items-center gap-2 px-2.5 py-2 lg:py-1.5 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors text-[11px]"
           >
-            <Globe className="w-3.5 h-3.5 text-teal-400" />
+            <Globe className="w-3.5 h-3.5 text-teal-400 shrink-0" />
             <span>Public SaaS Portal</span>
           </button>
         )}
-        {onOpenPlatformAdmin && (
+        {onOpenPlatformAdmin && isPlatformSuperAdmin && (
           <button
-            onClick={onOpenPlatformAdmin}
-            className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors text-[11px]"
+            onClick={() => {
+              onOpenPlatformAdmin();
+              onCloseMobile?.();
+            }}
+            className="w-full flex items-center gap-2 px-2.5 py-2 lg:py-1.5 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors text-[11px]"
           >
-            <Shield className="w-3.5 h-3.5 text-indigo-400" />
+            <Shield className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
             <span>Platform Admin Control</span>
           </button>
         )}
@@ -218,9 +239,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Role / Current User footer */}
       <div className="p-3 border-t border-slate-800 bg-slate-950/50">
-        <div className="flex items-center justify-between text-xs">
+        <div className="flex items-center justify-between gap-2 text-xs">
           <span className="text-slate-400">Active Role</span>
-          <span className="text-[11px] font-mono capitalize px-1.5 py-0.5 rounded bg-slate-800 text-teal-300 border border-slate-700">
+          <span className="text-[11px] font-mono capitalize px-1.5 py-0.5 rounded bg-slate-800 text-teal-300 border border-slate-700 truncate">
             {currentRole.replace('_', ' ')}
           </span>
         </div>

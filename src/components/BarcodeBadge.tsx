@@ -65,23 +65,24 @@ export const BarcodeBadge: React.FC<BarcodeBadgeProps> = ({
 
       {/* Printable Specimen Tube Label Modal */}
       {showPrintLabel && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full border border-slate-200 overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 bg-slate-900 text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-3 sm:p-4 backdrop-blur-xs">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between px-4 py-3 bg-slate-900 text-white shrink-0">
               <span className="text-sm font-semibold tracking-wide">Specimen Tube Label Preview</span>
               <button
                 onClick={() => setShowPrintLabel(false)}
+                aria-label="Close label preview"
                 className="text-slate-400 hover:text-white p-1"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="p-6 flex flex-col items-center">
+            <div className="p-4 sm:p-6 flex flex-col items-center overflow-y-auto">
               {/* Actual Printable Label Dimensions (approx 50mm x 25mm standard cryo/vacutainer label) */}
               <div
                 id="printable-tube-label"
-                className="w-72 bg-white border-2 border-dashed border-slate-400 p-3 rounded shadow-xs text-slate-900 font-sans"
+                className="w-full max-w-[288px] bg-white border-2 border-dashed border-slate-400 p-3 rounded shadow-xs text-slate-900 font-sans"
               >
                 <div className="flex items-start justify-between border-b border-slate-200 pb-1.5 mb-1.5">
                   <div>

@@ -41,6 +41,7 @@ export const PlatformAdminView: React.FC<PlatformAdminViewProps> = ({
     toggleLaboratorySuspension,
     updateSubscription,
     updatePlanPricing,
+    isPlatformSuperAdmin,
   } = useLIS();
 
   const [activeTab, setActiveTab] = useState<'laboratories' | 'plans' | 'transactions'>('laboratories');
@@ -48,6 +49,42 @@ export const PlatformAdminView: React.FC<PlatformAdminViewProps> = ({
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'trial' | 'suspended'>('all');
   const [suspensionModalLabId, setSuspensionModalLabId] = useState<string | null>(null);
   const [suspensionReason, setSuspensionReason] = useState('');
+
+  // 403 Forbidden Access Guard: Laboratory admins cannot access platform administration
+  if (!isPlatformSuperAdmin) {
+    return (
+      <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col items-center justify-center p-6 font-sans">
+        <div className="max-w-md w-full bg-slate-800/90 border border-red-500/30 rounded-2xl p-8 text-center space-y-5 shadow-2xl backdrop-blur-sm">
+          <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-center mx-auto text-red-400">
+            <Lock className="w-8 h-8" />
+          </div>
+          <div className="space-y-2">
+            <span className="text-[11px] font-bold tracking-wider uppercase text-red-400 bg-red-500/10 px-2.5 py-1 rounded-full border border-red-500/20">
+              403 Forbidden
+            </span>
+            <h2 className="text-xl font-bold text-white pt-1">Platform Admin Access Denied</h2>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Platform Super Administrator credentials required. Laboratory administrators and staff are strictly restricted to their own diagnostic workspace.
+            </p>
+          </div>
+          <div className="pt-2 flex flex-col gap-2">
+            <button
+              onClick={onBackToWorkspace}
+              className="w-full py-2.5 px-4 bg-teal-600 hover:bg-teal-500 text-white rounded-lg text-xs font-semibold transition-colors shadow-sm"
+            >
+              Return to Laboratory Workspace
+            </button>
+            <button
+              onClick={onGoToLanding}
+              className="w-full py-2 px-4 bg-slate-700/60 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium transition-colors"
+            >
+              Back to SaaS Home
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Editing plan prices modal state
   const [editingPlan, setEditingPlan] = useState<any | null>(null);
@@ -106,15 +143,15 @@ export const PlatformAdminView: React.FC<PlatformAdminViewProps> = ({
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col font-sans">
       {/* Top Header */}
-      <header className="bg-slate-950 border-b border-slate-800 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+      <header className="bg-slate-950 border-b border-slate-800 px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shrink-0">
             <Shield className="w-6 h-6" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-lg text-white">LabPro Platform Super Admin</span>
-              <span className="text-[10px] bg-indigo-500/20 text-indigo-300 font-semibold px-2 py-0.5 rounded-full border border-indigo-500/30">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-bold text-base sm:text-lg text-white">LabPro Platform Super Admin</span>
+              <span className="text-[10px] bg-indigo-500/20 text-indigo-300 font-semibold px-2 py-0.5 rounded-full border border-indigo-500/30 whitespace-nowrap">
                 HQ Control Center
               </span>
             </div>
@@ -122,16 +159,16 @@ export const PlatformAdminView: React.FC<PlatformAdminViewProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 shrink-0">
           <button
             onClick={onGoToLanding}
-            className="text-xs text-slate-400 hover:text-white px-3 py-1.5 rounded-lg border border-slate-800 hover:bg-slate-800 transition-colors"
+            className="text-xs text-slate-400 hover:text-white px-3 py-1.5 rounded-lg border border-slate-800 hover:bg-slate-800 transition-colors whitespace-nowrap"
           >
             Public SaaS Portal
           </button>
           <button
             onClick={onBackToWorkspace}
-            className="text-xs font-semibold bg-teal-500 hover:bg-teal-400 text-slate-950 px-3.5 py-1.5 rounded-lg transition-colors flex items-center gap-1.5"
+            className="text-xs font-semibold bg-teal-500 hover:bg-teal-400 text-slate-950 px-3.5 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 whitespace-nowrap"
           >
             <span>Open Clinical LIS</span>
             <ArrowUpRight className="w-4 h-4" />
@@ -208,10 +245,10 @@ export const PlatformAdminView: React.FC<PlatformAdminViewProps> = ({
         </div>
 
         {/* Tab Controls */}
-        <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
+        <div className="flex items-center gap-2 border-b border-slate-800 pb-3 overflow-x-auto">
           <button
             onClick={() => setActiveTab('laboratories')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 whitespace-nowrap ${
               activeTab === 'laboratories'
                 ? 'bg-teal-500 text-slate-950 shadow-sm'
                 : 'bg-slate-800/60 text-slate-300 hover:bg-slate-800'
@@ -222,7 +259,7 @@ export const PlatformAdminView: React.FC<PlatformAdminViewProps> = ({
           </button>
           <button
             onClick={() => setActiveTab('plans')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 whitespace-nowrap ${
               activeTab === 'plans'
                 ? 'bg-teal-500 text-slate-950 shadow-sm'
                 : 'bg-slate-800/60 text-slate-300 hover:bg-slate-800'
@@ -233,7 +270,7 @@ export const PlatformAdminView: React.FC<PlatformAdminViewProps> = ({
           </button>
           <button
             onClick={() => setActiveTab('transactions')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 whitespace-nowrap ${
               activeTab === 'transactions'
                 ? 'bg-teal-500 text-slate-950 shadow-sm'
                 : 'bg-slate-800/60 text-slate-300 hover:bg-slate-800'
@@ -261,11 +298,11 @@ export const PlatformAdminView: React.FC<PlatformAdminViewProps> = ({
               </div>
 
               <div className="flex items-center gap-2 w-full sm:w-auto">
-                <Filter className="w-4 h-4 text-slate-400" />
+                <Filter className="w-4 h-4 text-slate-400 shrink-0" />
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value as any)}
-                  className="bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-500"
+                  className="w-full sm:w-auto bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-500"
                 >
                   <option value="all">All Statuses</option>
                   <option value="active">Active Subscriptions</option>
@@ -278,7 +315,7 @@ export const PlatformAdminView: React.FC<PlatformAdminViewProps> = ({
             {/* Labs Table */}
             <div className="bg-slate-800/50 border border-slate-700/80 rounded-2xl overflow-hidden shadow-xl">
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
+                <table className="w-full min-w-[780px] text-left text-xs">
                   <thead className="bg-slate-900/80 border-b border-slate-700 text-slate-400 uppercase font-bold text-[10px] tracking-wider">
                     <tr>
                       <th className="py-3.5 px-4">Laboratory Tenant</th>
@@ -451,49 +488,51 @@ export const PlatformAdminView: React.FC<PlatformAdminViewProps> = ({
             </div>
 
             <div className="bg-slate-800/50 border border-slate-700/80 rounded-2xl overflow-hidden shadow-xl">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-900/80 border-b border-slate-700 text-slate-400 uppercase font-bold text-[10px] tracking-wider">
-                  <tr>
-                    <th className="py-3.5 px-4">Invoice / Ref</th>
-                    <th className="py-3.5 px-4">Laboratory</th>
-                    <th className="py-3.5 px-4">Tier / Cycle</th>
-                    <th className="py-3.5 px-4">Gateway</th>
-                    <th className="py-3.5 px-4">Amount</th>
-                    <th className="py-3.5 px-4">Status</th>
-                    <th className="py-3.5 px-4">Date</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800">
-                  {transactions.map((tx) => (
-                    <tr key={tx.id} className="hover:bg-slate-800/40 transition-colors">
-                      <td className="py-4 px-4 font-mono">
-                        <div className="text-white font-semibold">{tx.invoiceNumber}</div>
-                        <div className="text-[11px] text-teal-400">{tx.reference}</div>
-                      </td>
-                      <td className="py-4 px-4 font-medium text-slate-200">
-                        {tx.laboratoryName}
-                      </td>
-                      <td className="py-4 px-4 text-slate-300">
-                        {tx.planName}
-                      </td>
-                      <td className="py-4 px-4 uppercase text-slate-400 font-mono text-[11px]">
-                        {tx.provider}
-                      </td>
-                      <td className="py-4 px-4 font-bold text-white">
-                        {formatCurrency(tx.amount)}
-                      </td>
-                      <td className="py-4 px-4">
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                          {tx.status.toUpperCase()}
-                        </span>
-                      </td>
-                      <td className="py-4 px-4 text-slate-400">
-                        {new Date(tx.createdAt).toLocaleDateString()}
-                      </td>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[740px] text-left text-xs">
+                  <thead className="bg-slate-900/80 border-b border-slate-700 text-slate-400 uppercase font-bold text-[10px] tracking-wider">
+                    <tr>
+                      <th className="py-3.5 px-4">Invoice / Ref</th>
+                      <th className="py-3.5 px-4">Laboratory</th>
+                      <th className="py-3.5 px-4">Tier / Cycle</th>
+                      <th className="py-3.5 px-4">Gateway</th>
+                      <th className="py-3.5 px-4">Amount</th>
+                      <th className="py-3.5 px-4">Status</th>
+                      <th className="py-3.5 px-4">Date</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800">
+                    {transactions.map((tx) => (
+                      <tr key={tx.id} className="hover:bg-slate-800/40 transition-colors">
+                        <td className="py-4 px-4 font-mono whitespace-nowrap">
+                          <div className="text-white font-semibold">{tx.invoiceNumber}</div>
+                          <div className="text-[11px] text-teal-400">{tx.reference}</div>
+                        </td>
+                        <td className="py-4 px-4 font-medium text-slate-200 whitespace-nowrap">
+                          {tx.laboratoryName}
+                        </td>
+                        <td className="py-4 px-4 text-slate-300 whitespace-nowrap">
+                          {tx.planName}
+                        </td>
+                        <td className="py-4 px-4 uppercase text-slate-400 font-mono text-[11px] whitespace-nowrap">
+                          {tx.provider}
+                        </td>
+                        <td className="py-4 px-4 font-bold text-white whitespace-nowrap">
+                          {formatCurrency(tx.amount)}
+                        </td>
+                        <td className="py-4 px-4 whitespace-nowrap">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                            {tx.status.toUpperCase()}
+                          </span>
+                        </td>
+                        <td className="py-4 px-4 text-slate-400 whitespace-nowrap">
+                          {new Date(tx.createdAt).toLocaleDateString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
@@ -501,10 +540,10 @@ export const PlatformAdminView: React.FC<PlatformAdminViewProps> = ({
 
       {/* Suspension Modal */}
       {suspensionModalLabId && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-6 space-y-4">
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-5 sm:p-6 space-y-4">
             <div className="flex items-center gap-3 text-rose-400">
-              <AlertTriangle className="w-6 h-6" />
+              <AlertTriangle className="w-6 h-6 shrink-0" />
               <h3 className="font-bold text-base text-white">Suspend Laboratory Workspace</h3>
             </div>
             <p className="text-xs text-slate-300">
@@ -520,16 +559,16 @@ export const PlatformAdminView: React.FC<PlatformAdminViewProps> = ({
                 className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-rose-500"
               />
             </div>
-            <div className="flex items-center justify-end gap-3 pt-2">
+            <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-end gap-2 sm:gap-3 pt-2">
               <button
                 onClick={() => setSuspensionModalLabId(null)}
-                className="px-4 py-2 rounded-xl text-xs text-slate-400 hover:text-white"
+                className="w-full sm:w-auto px-4 py-2 rounded-xl text-xs text-slate-400 hover:text-white"
               >
                 Cancel
               </button>
               <button
                 onClick={() => handleToggleSuspension(suspensionModalLabId)}
-                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs"
+                className="w-full sm:w-auto px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs"
               >
                 Confirm Suspension
               </button>
@@ -540,8 +579,8 @@ export const PlatformAdminView: React.FC<PlatformAdminViewProps> = ({
 
       {/* Adjust Pricing Modal */}
       {editingPlan && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-6 space-y-4">
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-5 sm:p-6 space-y-4">
             <h3 className="font-bold text-base text-white">Adjust {editingPlan.name} Plan Pricing</h3>
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">Monthly Price (NGN)</label>
@@ -561,10 +600,10 @@ export const PlatformAdminView: React.FC<PlatformAdminViewProps> = ({
                 className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-xs text-white"
               />
             </div>
-            <div className="flex items-center justify-end gap-3 pt-2">
+            <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-end gap-2 sm:gap-3 pt-2">
               <button
                 onClick={() => setEditingPlan(null)}
-                className="px-4 py-2 rounded-xl text-xs text-slate-400 hover:text-white"
+                className="w-full sm:w-auto px-4 py-2 rounded-xl text-xs text-slate-400 hover:text-white"
               >
                 Cancel
               </button>
@@ -573,7 +612,7 @@ export const PlatformAdminView: React.FC<PlatformAdminViewProps> = ({
                   updatePlanPricing(editingPlan.id, editingPlan.monthlyPrice, editingPlan.annualPrice);
                   setEditingPlan(null);
                 }}
-                className="px-4 py-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs"
+                className="w-full sm:w-auto px-4 py-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs"
               >
                 Save Changes
               </button>

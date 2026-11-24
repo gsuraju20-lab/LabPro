@@ -309,6 +309,29 @@ export function subscribeToAuditLogs(
   );
 }
 
+export function subscribeToStaff(
+  labId: string,
+  onData: (staff: StaffMember[]) => void,
+  onError?: (err: any) => void
+): () => void {
+  if (!auth.currentUser) {
+    return () => {};
+  }
+  const q = collection(db, 'laboratories', labId, 'staff');
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const items: StaffMember[] = [];
+      snapshot.forEach((d) => items.push(d.data() as StaffMember));
+      onData(items);
+    },
+    (err) => {
+      console.warn('Staff snapshot subscription note:', err);
+      if (onError) onError(err);
+    }
+  );
+}
+
 // ==========================================
 // FIRESTORE MUTATIONS WITH AUDIT & IMMUTABILITY
 // ==========================================
@@ -489,5 +512,29 @@ export async function saveLaboratorySettingsToFirestore(
     await setDoc(doc(db, 'laboratories', labId), settings, { merge: true });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+export async function addStaffToFirestore(labId: string, staff: StaffMember): Promise<void> {
+  if (!auth.currentUser) return;
+  const path = `laboratories/${labId}/staff/${staff.id}`;
+  try {
+    await setDoc(doc(db, 'laboratories', labId, 'staff', staff.id), staff);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, path);
+  }
+}
+
+export async function updateStaffInFirestore(
+  labId: string,
+  staffId: string,
+  updates: Partial<StaffMember>
+): Promise<void> {
+  if (!auth.currentUser) return;
+  const path = `laboratories/${labId}/staff/${staffId}`;
+  try {
+    await updateDoc(doc(db, 'laboratories', labId, 'staff', staffId), updates);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, path);
   }
 }

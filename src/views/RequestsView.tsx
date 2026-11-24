@@ -60,7 +60,7 @@ export const RequestsView: React.FC<RequestsViewProps> = ({
 
         <button
           onClick={onOpenNewRequest}
-          className="inline-flex items-center gap-1.5 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
+          className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 sm:py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0 self-start sm:self-auto"
         >
           <Plus className="w-4 h-4 stroke-[2.5]" />
           Create Test Order
@@ -80,14 +80,14 @@ export const RequestsView: React.FC<RequestsViewProps> = ({
           />
         </div>
 
-        <div className="flex items-center gap-3 shrink-0">
-          <div className="flex items-center gap-1.5 text-xs text-slate-600">
-            <Filter className="w-3.5 h-3.5 text-slate-400" />
-            <span>Status:</span>
+        <div className="flex flex-wrap items-center gap-3 shrink-0">
+          <div className="flex items-center gap-1.5 text-xs text-slate-600 flex-1 sm:flex-initial">
+            <Filter className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+            <span className="shrink-0">Status:</span>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-2 py-1.5 bg-slate-50 border border-slate-200 rounded text-xs outline-hidden font-medium"
+              className="w-full sm:w-auto px-2 py-1.5 bg-slate-50 border border-slate-200 rounded text-xs outline-hidden font-medium"
             >
               <option value="all">All Statuses</option>
               <option value="registered">Registered</option>
@@ -99,12 +99,12 @@ export const RequestsView: React.FC<RequestsViewProps> = ({
             </select>
           </div>
 
-          <div className="flex items-center gap-1.5 text-xs text-slate-600">
-            <span>Priority:</span>
+          <div className="flex items-center gap-1.5 text-xs text-slate-600 flex-1 sm:flex-initial">
+            <span className="shrink-0">Priority:</span>
             <select
               value={priorityFilter}
               onChange={(e) => setPriorityFilter(e.target.value)}
-              className="px-2 py-1.5 bg-slate-50 border border-slate-200 rounded text-xs outline-hidden font-medium"
+              className="w-full sm:w-auto px-2 py-1.5 bg-slate-50 border border-slate-200 rounded text-xs outline-hidden font-medium"
             >
               <option value="all">All Priorities</option>
               <option value="routine">Routine</option>
@@ -118,7 +118,7 @@ export const RequestsView: React.FC<RequestsViewProps> = ({
       {/* Orders Table */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+          <table className="w-full min-w-[780px] text-left text-xs">
             <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase text-[10px]">
               <tr>
                 <th className="py-3 px-4">Request #</th>
@@ -182,12 +182,12 @@ export const RequestsView: React.FC<RequestsViewProps> = ({
                           <StatusBadge type="payment" value={req.paymentStatus} />
                         </div>
                       </td>
-                      <td className="py-3.5 px-4 text-right">
+                      <td className="py-3.5 px-4 text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-1.5">
                           {isVerifiedOrCompleted ? (
                             <button
                               onClick={() => openReportModal(req.id)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-teal-50 hover:bg-teal-100 text-teal-800 rounded font-semibold text-xs border border-teal-200 transition-colors"
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-teal-50 hover:bg-teal-100 text-teal-800 rounded font-semibold text-xs border border-teal-200 transition-colors whitespace-nowrap"
                             >
                               <FileText className="w-3.5 h-3.5" />
                               Report
@@ -196,7 +196,7 @@ export const RequestsView: React.FC<RequestsViewProps> = ({
                             <>
                               <button
                                 onClick={() => onNavigate('results')}
-                                className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-sky-50 hover:bg-sky-100 text-sky-800 rounded font-semibold text-xs border border-sky-200 transition-colors"
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-sky-50 hover:bg-sky-100 text-sky-800 rounded font-semibold text-xs border border-sky-200 transition-colors whitespace-nowrap"
                               >
                                 <FileSpreadsheet className="w-3.5 h-3.5" />
                                 Enter Results

@@ -103,7 +103,7 @@ export const VerificationView: React.FC = () => {
       {/* Main Review Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column: Pending Review Queue */}
-        <div className="lg:col-span-5 bg-white rounded-xl border border-slate-200 shadow-xs p-4 flex flex-col h-[75vh]">
+        <div className="lg:col-span-5 bg-white rounded-xl border border-slate-200 shadow-xs p-4 flex flex-col max-h-[45vh] lg:max-h-none lg:h-[75vh]">
           <div className="flex items-center justify-between pb-3 border-b border-slate-200 mb-3">
             <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">
               Pending Queue ({pendingVerificationList.length})
@@ -168,13 +168,13 @@ export const VerificationView: React.FC = () => {
         </div>
 
         {/* Right Column: Detailed Result Inspection and Verification Actions */}
-        <div className="lg:col-span-7 bg-white rounded-xl border border-slate-200 shadow-xs p-6 flex flex-col h-[75vh] overflow-y-auto">
+        <div className="lg:col-span-7 bg-white rounded-xl border border-slate-200 shadow-xs p-4 sm:p-6 flex flex-col h-auto lg:h-[75vh] lg:overflow-y-auto">
           {selectedResult ? (
             <div className="space-y-6">
               {/* Inspection Header */}
-              <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-between text-xs">
-                <div>
-                  <h2 className="font-bold text-slate-900 text-sm">{selectedResult.patientName}</h2>
+              <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs">
+                <div className="min-w-0">
+                  <h2 className="font-bold text-slate-900 text-sm truncate">{selectedResult.patientName}</h2>
                   <p className="text-slate-500 text-[11px]">
                     Order: <strong className="font-mono text-teal-800">{selectedResult.requestNumber}</strong> • Barcode: {selectedResult.sampleBarcode}
                   </p>
@@ -193,8 +193,8 @@ export const VerificationView: React.FC = () => {
               </div>
 
               {/* Comparative Values Table */}
-              <div className="border border-slate-200 rounded-lg overflow-hidden">
-                <table className="w-full text-xs text-left">
+              <div className="border border-slate-200 rounded-lg overflow-x-auto">
+                <table className="w-full min-w-[560px] text-xs text-left">
                   <thead className="bg-slate-100/70 border-b border-slate-200 text-slate-600 font-semibold uppercase text-[10px]">
                     <tr>
                       <th className="py-2.5 px-4">Parameter</th>
@@ -257,11 +257,11 @@ export const VerificationView: React.FC = () => {
                 </button>
 
                 {canVerify && (
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <button
                       type="button"
                       onClick={() => setDecisionModal({ result: selectedResult, decision: 'return' })}
-                      className="inline-flex items-center gap-1.5 px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded text-xs font-semibold border border-amber-200 transition-colors"
+                      className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded text-xs font-semibold border border-amber-200 transition-colors"
                     >
                       <RotateCcw className="w-3.5 h-3.5" />
                       Return for Correction
@@ -269,7 +269,7 @@ export const VerificationView: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setDecisionModal({ result: selectedResult, decision: 'reject' })}
-                      className="inline-flex items-center gap-1.5 px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-800 rounded text-xs font-semibold border border-rose-200 transition-colors"
+                      className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-800 rounded text-xs font-semibold border border-rose-200 transition-colors"
                     >
                       <XCircle className="w-3.5 h-3.5" />
                       Reject
@@ -277,7 +277,7 @@ export const VerificationView: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setDecisionModal({ result: selectedResult, decision: 'approve' })}
-                      className="inline-flex items-center gap-1.5 px-5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded text-xs font-semibold shadow-xs transition-colors"
+                      className="inline-flex items-center justify-center gap-1.5 px-5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded text-xs font-semibold shadow-xs transition-colors"
                     >
                       <CheckCircle2 className="w-4 h-4 stroke-[2.5]" />
                       Approve & Release
@@ -300,10 +300,10 @@ export const VerificationView: React.FC = () => {
 
       {/* Decision Confirmation Modal */}
       {decisionModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full border border-slate-200 overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-3 sm:p-4 backdrop-blur-xs">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
             <div
-              className={`px-6 py-4 text-white flex items-center justify-between ${
+              className={`px-4 sm:px-6 py-4 text-white flex items-center justify-between gap-2 shrink-0 ${
                 decisionModal.decision === 'approve'
                   ? 'bg-emerald-700'
                   : decisionModal.decision === 'reject'
@@ -320,13 +320,14 @@ export const VerificationView: React.FC = () => {
               </h2>
               <button
                 onClick={() => setDecisionModal(null)}
-                className="text-white/80 hover:text-white"
+                aria-label="Close verification dialog"
+                className="text-white/80 hover:text-white p-1 shrink-0"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleExecuteDecision} className="p-6 space-y-4">
+            <form onSubmit={handleExecuteDecision} className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
               <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs">
                 <p className="font-semibold text-slate-800">
                   {decisionModal.result.testName}
@@ -355,17 +356,17 @@ export const VerificationView: React.FC = () => {
                 />
               </div>
 
-              <div className="pt-2 flex justify-end gap-2">
+              <div className="pt-2 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setDecisionModal(null)}
-                  className="px-4 py-2 border border-slate-300 rounded-md text-xs font-medium text-slate-700 hover:bg-slate-50"
+                  className="w-full sm:w-auto px-4 py-2.5 sm:py-2 border border-slate-300 rounded-md text-xs font-medium text-slate-700 hover:bg-slate-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className={`px-5 py-2 text-white rounded-md text-xs font-semibold shadow-xs ${
+                  className={`w-full sm:w-auto px-5 py-2.5 sm:py-2 text-white rounded-md text-xs font-semibold shadow-xs ${
                     decisionModal.decision === 'approve'
                       ? 'bg-emerald-700 hover:bg-emerald-800'
                       : decisionModal.decision === 'reject'

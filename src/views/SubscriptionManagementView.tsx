@@ -42,6 +42,7 @@ export const SubscriptionManagementView: React.FC = () => {
   const [billingCycle, setBillingCycle] = useState<SubscriptionBillingCycle>('annual');
   const [isProcessing, setIsProcessing] = useState(false);
   const [checkoutSuccess, setCheckoutSuccess] = useState(false);
+  const [selectedReceiptNotice, setSelectedReceiptNotice] = useState<string | null>(null);
 
   const selectedUpgradePlan = plans.find((p) => p.id === targetPlanId) || plans[1];
   const payableAmount = billingCycle === 'monthly' ? selectedUpgradePlan.monthlyPrice : selectedUpgradePlan.annualPrice;
@@ -76,8 +77,8 @@ export const SubscriptionManagementView: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">Subscription & Licensing</h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">Subscription & Licensing</h1>
             <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-50 text-teal-800 border border-teal-200">
               Tenant: {currentLab.code}
             </span>
@@ -92,7 +93,7 @@ export const SubscriptionManagementView: React.FC = () => {
             setTargetPlanId(currentPlan.id === 'starter' ? 'professional' : 'enterprise');
             setIsUpgradeOpen(true);
           }}
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-xs font-bold shadow-xs transition-colors"
+          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-xs font-bold shadow-xs transition-colors shrink-0 self-start sm:self-auto"
         >
           <Zap className="w-4 h-4 text-amber-300" />
           <span>Change / Upgrade Plan</span>
@@ -282,13 +283,25 @@ export const SubscriptionManagementView: React.FC = () => {
           <Receipt className="w-5 h-5 text-slate-400" />
         </div>
 
+        {selectedReceiptNotice && (
+          <div className="mx-5 mt-4 p-3 bg-teal-50 border border-teal-200 rounded-lg text-xs text-teal-900 flex items-center justify-between gap-2">
+            <span>{selectedReceiptNotice}</span>
+            <button
+              onClick={() => setSelectedReceiptNotice(null)}
+              className="text-teal-700 font-semibold hover:underline shrink-0"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
         {labTransactions.length === 0 ? (
           <div className="p-8 text-center text-xs text-slate-500">
             No gateway subscription invoices recorded yet.
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="w-full min-w-[700px] text-left text-xs">
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase text-[10px] tracking-wider">
                 <tr>
                   <th className="py-3 px-4">Invoice No.</th>
@@ -303,31 +316,35 @@ export const SubscriptionManagementView: React.FC = () => {
               <tbody className="divide-y divide-slate-100">
                 {labTransactions.map((tx) => (
                   <tr key={tx.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="py-3.5 px-4 font-mono font-semibold text-slate-900">
+                    <td className="py-3.5 px-4 font-mono font-semibold text-slate-900 whitespace-nowrap">
                       {tx.invoiceNumber}
                     </td>
                     <td className="py-3.5 px-4 text-slate-700">
                       {tx.planName}
                     </td>
-                    <td className="py-3.5 px-4 font-mono text-[11px] text-teal-700">
+                    <td className="py-3.5 px-4 font-mono text-[11px] text-teal-700 whitespace-nowrap">
                       {tx.reference}
                     </td>
-                    <td className="py-3.5 px-4 font-bold text-slate-900">
+                    <td className="py-3.5 px-4 font-bold text-slate-900 whitespace-nowrap">
                       {formatCurrency(tx.amount)}
                     </td>
-                    <td className="py-3.5 px-4">
+                    <td className="py-3.5 px-4 whitespace-nowrap">
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                         {tx.status.toUpperCase()}
                       </span>
                     </td>
-                    <td className="py-3.5 px-4 text-slate-500">
+                    <td className="py-3.5 px-4 text-slate-500 whitespace-nowrap">
                       {new Date(tx.createdAt).toLocaleDateString()}
                     </td>
-                    <td className="py-3.5 px-4 text-right">
+                    <td className="py-3.5 px-4 text-right whitespace-nowrap">
                       <button
-                        onClick={() => alert(`Official VAT Receipt: ${tx.invoiceNumber}\nAmount: ${formatCurrency(tx.amount)}\nGateway: Paystack Nigeria\nStatus: Settled`)}
+                        onClick={() =>
+                          setSelectedReceiptNotice(
+                            `Official VAT Receipt ${tx.invoiceNumber} • Amount: ${formatCurrency(tx.amount)} • Gateway: Paystack Nigeria • Status: Settled`
+                          )
+                        }
                         className="p-1.5 rounded-lg text-slate-500 hover:text-teal-700 hover:bg-slate-100 transition-colors"
-                        title="Download Receipt"
+                        title="View VAT Receipt Summary"
                       >
                         <Download className="w-4 h-4" />
                       </button>
@@ -342,18 +359,18 @@ export const SubscriptionManagementView: React.FC = () => {
 
       {/* UPGRADE MODAL */}
       {isUpgradeOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 sm:p-8 space-y-6 shadow-2xl border border-slate-200">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white rounded-2xl max-w-2xl w-full p-4 sm:p-6 md:p-8 space-y-5 sm:space-y-6 shadow-2xl border border-slate-200 max-h-[92vh] overflow-y-auto">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
               <div>
-                <h3 className="text-xl font-bold text-slate-900">Upgrade / Change Subscription</h3>
+                <h3 className="text-lg sm:text-xl font-bold text-slate-900">Upgrade / Change Subscription</h3>
                 <p className="text-xs text-slate-500 mt-0.5">
                   Select a new plan tier for {currentLab.name}. Changes take effect immediately.
                 </p>
               </div>
 
               {/* Cycle Toggle */}
-              <div className="inline-flex p-1 bg-slate-100 rounded-lg text-xs">
+              <div className="inline-flex p-1 bg-slate-100 rounded-lg text-xs self-start sm:self-auto shrink-0">
                 <button
                   onClick={() => setBillingCycle('monthly')}
                   className={`px-3 py-1 rounded-md font-semibold transition-colors ${
@@ -429,12 +446,12 @@ export const SubscriptionManagementView: React.FC = () => {
               </div>
             )}
 
-            <div className="flex items-center justify-end gap-3 pt-2">
+            <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-end gap-2 sm:gap-3 pt-2">
               <button
                 type="button"
                 onClick={() => setIsUpgradeOpen(false)}
                 disabled={isProcessing}
-                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900"
+                className="w-full sm:w-auto px-4 py-2.5 sm:py-2 border border-slate-200 sm:border-transparent rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900"
               >
                 Cancel
               </button>
@@ -442,7 +459,7 @@ export const SubscriptionManagementView: React.FC = () => {
                 type="button"
                 onClick={handleSimulatePayment}
                 disabled={isProcessing || checkoutSuccess}
-                className="px-6 py-2.5 bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-xs font-bold shadow-xs transition-colors disabled:opacity-50 flex items-center gap-2"
+                className="w-full sm:w-auto px-6 py-2.5 bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-xs font-bold shadow-xs transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {isProcessing ? (
                   <>

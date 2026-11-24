@@ -87,19 +87,19 @@ export const NewRequestModal: React.FC<NewRequestModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
-      <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
-        <div className="flex items-center justify-between px-6 py-4 bg-slate-900 text-white shrink-0">
-          <div className="flex items-center gap-2">
-            <ClipboardList className="w-5 h-5 text-teal-400" />
-            <h2 className="text-base font-bold tracking-tight">Create Test Request Order</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-3 sm:p-4 backdrop-blur-xs">
+      <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full border border-slate-200 overflow-hidden flex flex-col max-h-[92vh]">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4 bg-slate-900 text-white shrink-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <ClipboardList className="w-5 h-5 text-teal-400 shrink-0" />
+            <h2 className="text-base font-bold tracking-tight truncate">Create Test Request Order</h2>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-white">
+          <button onClick={onClose} aria-label="Close modal" className="text-slate-400 hover:text-white p-1 shrink-0">
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-5 flex-1">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 overflow-y-auto space-y-5 flex-1">
           {error && (
             <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-md">
               {error}
@@ -308,17 +308,17 @@ export const NewRequestModal: React.FC<NewRequestModalProps> = ({
             </div>
           </div>
 
-          <div className="pt-2 flex justify-end gap-2">
+          <div className="pt-2 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-slate-300 rounded-md text-xs font-medium text-slate-700 hover:bg-slate-50"
+              className="w-full sm:w-auto px-4 py-2.5 sm:py-2 border border-slate-300 rounded-md text-xs font-medium text-slate-700 hover:bg-slate-50"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-6 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-md text-xs font-semibold shadow-xs"
+              className="w-full sm:w-auto px-6 py-2.5 sm:py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-md text-xs font-semibold shadow-xs"
             >
               Generate Order & Specimen Labels
             </button>

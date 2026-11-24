@@ -67,12 +67,12 @@ export const ReportsView: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2 text-xs text-slate-600 shrink-0">
-          <Filter className="w-3.5 h-3.5 text-slate-400" />
-          <span>Release Filter:</span>
+          <Filter className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+          <span className="shrink-0">Release Filter:</span>
           <select
             value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
-            className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded text-xs outline-hidden font-medium"
+            className="w-full sm:w-auto px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded text-xs outline-hidden font-medium"
           >
             <option value="all">All Diagnostic Orders</option>
             <option value="verified">Verified & Released Only</option>
@@ -84,7 +84,7 @@ export const ReportsView: React.FC = () => {
       {/* Reports Directory */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+          <table className="w-full min-w-[700px] text-left text-xs">
             <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase text-[10px]">
               <tr>
                 <th className="py-3 px-4">Order / Report #</th>
@@ -126,11 +126,11 @@ export const ReportsView: React.FC = () => {
                       <td className="py-3.5 px-3">
                         <StatusBadge type="requestStatus" value={req.status} />
                       </td>
-                      <td className="py-3.5 px-4 text-right">
+                      <td className="py-3.5 px-4 text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={() => openReportModal(req.id)}
-                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold shadow-xs transition-colors ${
+                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold shadow-xs transition-colors whitespace-nowrap ${
                               isReleased
                                 ? 'bg-teal-600 hover:bg-teal-700 text-white'
                                 : 'bg-slate-100 hover:bg-slate-200 text-slate-700'

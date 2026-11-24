@@ -142,7 +142,7 @@ export const ResultEntryView: React.FC = () => {
       {/* Main Two-Column Workflow */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column: Orders Queue */}
-        <div className="lg:col-span-4 bg-white rounded-xl border border-slate-200 shadow-xs p-4 flex flex-col h-[75vh]">
+        <div className="lg:col-span-4 bg-white rounded-xl border border-slate-200 shadow-xs p-4 flex flex-col max-h-[45vh] lg:max-h-none lg:h-[75vh]">
           <div className="flex items-center justify-between pb-3 border-b border-slate-200 mb-3">
             <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">
               Diagnostic Queue ({requests.length})
@@ -184,7 +184,7 @@ export const ResultEntryView: React.FC = () => {
         </div>
 
         {/* Right Column: Dynamic Form tailored to Selected Test */}
-        <div className="lg:col-span-8 bg-white rounded-xl border border-slate-200 shadow-xs p-6 flex flex-col h-[75vh] overflow-y-auto">
+        <div className="lg:col-span-8 bg-white rounded-xl border border-slate-200 shadow-xs p-4 sm:p-6 flex flex-col h-auto lg:h-[75vh] lg:overflow-y-auto">
           {currentRequest && (
             <div className="space-y-6">
               {/* Patient & Order Header Bar */}
@@ -254,8 +254,8 @@ export const ResultEntryView: React.FC = () => {
               {/* Dynamic Parameter Entry Form */}
               {currentTest ? (
                 <div className="border border-slate-200 rounded-lg overflow-hidden">
-                  <div className="px-4 py-3 bg-slate-100/70 border-b border-slate-200 flex items-center justify-between">
-                    <div>
+                  <div className="px-4 py-3 bg-slate-100/70 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
+                    <div className="min-w-0">
                       <h3 className="font-bold text-xs text-slate-900 uppercase tracking-wider">
                         {currentTest.name}
                       </h3>
@@ -263,7 +263,7 @@ export const ResultEntryView: React.FC = () => {
                         Department: {currentTest.department} • Method: {currentTest.method}
                       </p>
                     </div>
-                    <span className="text-[11px] text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200 font-mono">
+                    <span className="text-[11px] text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200 font-mono shrink-0">
                       Specimen: {currentTest.specimenType}
                     </span>
                   </div>
@@ -400,15 +400,15 @@ export const ResultEntryView: React.FC = () => {
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+                  <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <span className="text-[11px] text-slate-500">
                       Logged Scientist: <strong className="text-slate-800">{currentStaff.fullName}</strong>
                     </span>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                       <button
                         type="button"
                         onClick={() => handleSave(false)}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 border border-slate-300 rounded-md text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+                        className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 sm:py-2 border border-slate-300 rounded-md text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
                       >
                         <Save className="w-3.5 h-3.5" />
                         Save Draft
@@ -416,7 +416,7 @@ export const ResultEntryView: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => handleSave(true)}
-                        className="inline-flex items-center gap-1.5 px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-md text-xs font-semibold shadow-xs transition-colors"
+                        className="inline-flex items-center justify-center gap-1.5 px-5 py-2.5 sm:py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-md text-xs font-semibold shadow-xs transition-colors"
                       >
                         <Send className="w-3.5 h-3.5" />
                         Submit for Pathologist Verification

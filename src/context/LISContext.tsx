@@ -56,6 +56,7 @@ import {
   subscribeToTests,
   subscribeToDepartments,
   subscribeToAuditLogs,
+  subscribeToStaff,
   addPatientToFirestore,
   updatePatientInFirestore,
   addRequestToFirestore,
@@ -69,6 +70,8 @@ import {
   updateDepartmentInFirestore,
   addAuditLogToFirestore,
   saveLaboratorySettingsToFirestore,
+  addStaffToFirestore,
+  updateStaffInFirestore,
 } from '../firebase/firestoreService';
 
 interface LISContextType {
@@ -189,6 +192,7 @@ interface LISContextType {
   toggleLaboratorySuspension: (labId: string, reason?: string) => void;
   updatePlanPricing: (planId: SubscriptionPlanId, monthlyPrice: number, annualPrice: number) => void;
   updatePlanLimits: (planId: SubscriptionPlanId, limits: Partial<PlanLimits>) => void;
+  isPlatformSuperAdmin: boolean;
 }
 
 const LISContext = createContext<LISContextType | undefined>(undefined);
@@ -293,6 +297,9 @@ export const LISProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const unsubAudit = subscribeToAuditLogs(currentLabId, (data) => {
       if (data && data.length > 0) setAuditLogs(data);
     });
+    const unsubStaff = subscribeToStaff(currentLabId, (data) => {
+      if (data && data.length > 0) setStaffList(data);
+    });
 
     return () => {
       unsubPatients();
@@ -303,14 +310,43 @@ export const LISProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       unsubTests();
       unsubDepartments();
       unsubAudit();
+      unsubStaff();
     };
   }, [currentLabId, firebaseUser]);
 
   const currentLab = laboratories.find((lab) => lab.id === currentLabId) || laboratories[0];
 
+  const isPlatformSuperAdmin = Boolean(
+    currentUserProfile?.role === 'super_admin' ||
+    currentUserProfile?.isPlatformSuperAdmin ||
+    currentUserProfile?.email === 'admin@labpro.health' ||
+    currentUserProfile?.email === 'gsuraju20@gmail.com'
+  );
+
+  const handleSetCurrentLabId = (labId: string) => {
+    // Platform Super Admins can switch between any lab workspace
+    // Regular lab staff and admins are isolated to their registered labId
+    if (!isPlatformSuperAdmin && currentUserProfile?.labId && currentUserProfile.labId !== labId) {
+      console.warn(`Tenant Isolation Guard: User assigned to ${currentUserProfile.labId} cannot access ${labId}`);
+      return;
+    }
+    setCurrentLabId(labId);
+  };
+
+  // Strictly tenant-scoped data arrays to guarantee client-side multi-tenant isolation
+  const scopedDepartments = departments.filter((d) => d.labId === currentLab.id);
+  const scopedTests = tests.filter((t) => t.labId === currentLab.id);
+  const scopedPatients = patients.filter((p) => p.labId === currentLab.id);
+  const scopedRequests = requests.filter((r) => r.labId === currentLab.id);
+  const scopedSamples = samples.filter((s) => s.labId === currentLab.id);
+  const scopedResults = results.filter((res) => res.labId === currentLab.id);
+  const scopedInvoices = invoices.filter((inv) => inv.labId === currentLab.id);
+  const scopedStaffList = staffList.filter((s) => s.labId === currentLab.id);
+  const scopedAuditLogs = auditLogs.filter((log) => log.labId === currentLab.id);
+
   const currentStaff =
+    scopedStaffList.find((s) => s.role === currentRole) ||
     staffList.find((s) => s.role === currentRole && s.labId === currentLab.id) ||
-    staffList.find((s) => s.role === currentRole) ||
     staffList[0];
 
   // Auth Functions
@@ -421,6 +457,9 @@ export const LISProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       joinedAt: new Date().toISOString().split('T')[0],
     };
     setStaffList((prev) => [...prev, newStaff]);
+    addStaffToFirestore(currentLab.id, newStaff).catch((err) =>
+      console.warn('Staff add firestore note:', err)
+    );
     addAuditLog('STAFF_ADDED', 'staff', newStaff.id, `Added staff member ${newStaff.fullName} as ${newStaff.role}`);
   };
 
@@ -562,6 +601,9 @@ export const LISProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCurrentRole('lab_admin');
 
     saveLaboratorySettingsToFirestore(newLabId, newLab).catch(() => {});
+    addStaffToFirestore(newLabId, newAdminStaff).catch(() => {});
+    newDeps.forEach((dep) => addDepartmentToFirestore(newLabId, dep).catch(() => {}));
+    starterTests.forEach((t) => addTestToFirestore(newLabId, t).catch(() => {}));
     return newLab;
   };
 
@@ -627,22 +669,37 @@ export const LISProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setTransactions((prev) => [tx, ...prev]);
 
+    saveLaboratorySettingsToFirestore(labId, {
+      status: 'active',
+      planId: targetPlan.id,
+      updatedAt: now.toISOString(),
+    }).catch((e) => console.warn('Subscription sync note:', e));
+
     addAuditLog('SUBSCRIPTION_UPGRADED', 'setting', labId, `Upgraded subscription to ${targetPlan.name} (${billingCycle}) via ${paymentProvider}.`);
   };
 
   const toggleLaboratorySuspension = (labId: string, reason?: string) => {
+    const targetLab = laboratories.find((l) => l.id === labId);
+    if (!targetLab) return;
+    const nextStatus: 'active' | 'suspended' = targetLab.status === 'suspended' ? 'active' : 'suspended';
+
     setLaboratories((prev) =>
       prev.map((lab) => {
         if (lab.id !== labId) return lab;
-        const newStatus = lab.status === 'suspended' ? 'active' : 'suspended';
         return {
           ...lab,
-          status: newStatus,
-          suspendedReason: newStatus === 'suspended' ? reason || 'Administrative compliance audit hold' : undefined,
+          status: nextStatus,
+          suspendedReason: nextStatus === 'suspended' ? reason || 'Administrative compliance audit hold' : undefined,
           updatedAt: new Date().toISOString(),
         };
       })
     );
+    saveLaboratorySettingsToFirestore(labId, {
+      status: nextStatus,
+      suspendedReason: nextStatus === 'suspended' ? reason || 'Administrative compliance audit hold' : undefined,
+      updatedAt: new Date().toISOString(),
+    }).catch((e) => console.warn('Suspension sync note:', e));
+
     addAuditLog('LAB_SUSPENSION_TOGGLED', 'setting', labId, `Laboratory suspension status toggled. Reason: ${reason || 'N/A'}`);
   };
 
@@ -659,12 +716,24 @@ export const LISProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const toggleStaffStatus = (staffId: string) => {
+    const target = staffList.find((s) => s.id === staffId);
+    if (!target) return;
+    const nextStatus = !target.isActive;
+
     setStaffList((prev) =>
-      prev.map((staff) => (staff.id === staffId ? { ...staff, isActive: !staff.isActive } : staff))
+      prev.map((staff) => (staff.id === staffId ? { ...staff, isActive: nextStatus } : staff))
+    );
+    updateStaffInFirestore(currentLab.id, staffId, { isActive: nextStatus }).catch((err) =>
+      console.warn('Staff update firestore note:', err)
     );
   };
 
   const addDepartment = (dep: Omit<Department, 'id' | 'labId'>) => {
+    const activePlan = plans.find((p) => p.id === (currentLab.subscription?.planId || currentLab.planId)) || plans[0];
+    if (activePlan.limits.maxDepartments !== -1 && scopedDepartments.length >= activePlan.limits.maxDepartments) {
+      alert(`Department Quota Reached: Your current ${activePlan.name} plan permits up to ${activePlan.limits.maxDepartments} departments. Please upgrade your subscription.`);
+      return;
+    }
     const newDep: Department = {
       ...dep,
       id: `dep-${Date.now()}`,
@@ -707,7 +776,7 @@ export const LISProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addPatient = (patientData: Omit<Patient, 'id' | 'labId' | 'createdAt' | 'patientIdNumber'>): Patient => {
-    const nextSeq = String(patients.length + 1).padStart(4, '0');
+    const nextSeq = String(scopedPatients.length + 1).padStart(4, '0');
     const newPatient: Patient = {
       ...patientData,
       id: `pat-${Date.now()}`,
@@ -726,14 +795,14 @@ export const LISProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updatePatient = (id: string, updated: Partial<Patient>) => {
-    setPatients((prev) => prev.map((p) => (p.id === id ? { ...p, ...updated, updatedAt: new Date().toISOString() } : p)));
+    setPatients((prev) => prev.map((p) => (p.id === id && p.labId === currentLab.id ? { ...p, ...updated, updatedAt: new Date().toISOString() } : p)));
     updatePatientInFirestore(currentLab.id, id, updated).catch((e) =>
       console.warn('Patient update firestore:', e)
     );
     addAuditLog('PATIENT_UPDATED', 'patient', id, `Updated clinical profile for patient.`);
   };
 
-  const getPatientById = (id: string) => patients.find((p) => p.id === id);
+  const getPatientById = (id: string) => scopedPatients.find((p) => p.id === id);
 
   const createTestRequest = (data: {
     patientId: string;
@@ -745,13 +814,21 @@ export const LISProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     initialPayment?: number;
     paymentMethod?: string;
   }): TestRequest => {
-    if (currentLab.status === 'suspended') {
-      alert(`Diagnostic Processing Locked: ${currentLab.name} workspace is currently suspended. Please renew or reactivate under Subscription & Licensing.`);
-      throw new Error('Laboratory is suspended.');
+    if (currentLab.status === 'suspended' || currentLab.subscription?.status === 'expired') {
+      alert(`Diagnostic Processing Locked: ${currentLab.name} workspace is currently ${currentLab.status || 'expired'}. Please renew or reactivate under Subscription & Licensing.`);
+      throw new Error('Laboratory subscription is inactive or suspended.');
     }
 
-    const patient = patients.find((p) => p.id === data.patientId);
-    if (!patient) throw new Error('Patient not found');
+    const patient = scopedPatients.find((p) => p.id === data.patientId);
+    if (!patient) throw new Error('Patient not found in this laboratory workspace.');
+
+    const activePlan = plans.find((p) => p.id === (currentLab.subscription?.planId || currentLab.planId)) || plans[0];
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    const monthlyRequestsCount = scopedRequests.filter((r) => r.createdAt.startsWith(currentMonth)).length;
+    if (activePlan.limits.maxPatientsPerMonth !== -1 && monthlyRequestsCount >= activePlan.limits.maxPatientsPerMonth) {
+      alert(`Monthly Request Quota Reached: Your current ${activePlan.name} plan permits up to ${activePlan.limits.maxPatientsPerMonth} test requests per month.`);
+      throw new Error('Monthly request quota reached.');
+    }
 
     const selectedTests = tests.filter((t) => data.testIds.includes(t.id));
     const grossTotal = selectedTests.reduce((sum, t) => sum + t.price, 0);
@@ -1215,14 +1292,14 @@ export const LISProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       value={{
         currentLab,
         laboratories,
-        setCurrentLabId,
+        setCurrentLabId: handleSetCurrentLabId,
         createLaboratory,
         updateLaboratorySettings,
         currentUserProfile,
         currentRole,
         setCurrentRole,
         currentStaff,
-        staffList,
+        staffList: scopedStaffList,
         addStaffMember,
         toggleStaffStatus,
         loginGoogle,
@@ -1231,30 +1308,30 @@ export const LISProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isAuthModalOpen,
         setIsAuthModalOpen,
         isAuthLoading,
-        departments,
+        departments: scopedDepartments,
         addDepartment,
         updateDepartment,
-        tests,
+        tests: scopedTests,
         addTestDefinition,
         updateTestDefinition,
-        patients,
+        patients: scopedPatients,
         addPatient,
         updatePatient,
         getPatientById,
-        requests,
+        requests: scopedRequests,
         createTestRequest,
         updateRequestStatus,
-        samples,
+        samples: scopedSamples,
         collectSample,
         receiveSample,
         rejectSample,
-        results,
+        results: scopedResults,
         saveResult,
         verifyResult,
         amendResult,
-        invoices,
+        invoices: scopedInvoices,
         recordPayment,
-        auditLogs,
+        auditLogs: scopedAuditLogs,
         addAuditLog,
         isFirestoreOnline,
         isPrintReportOpen,
@@ -1269,6 +1346,7 @@ export const LISProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         toggleLaboratorySuspension,
         updatePlanPricing,
         updatePlanLimits,
+        isPlatformSuperAdmin,
       }}
     >
       {children}

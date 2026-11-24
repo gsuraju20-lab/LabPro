@@ -54,19 +54,19 @@ export const PatientModal: React.FC<PatientModalProps> = ({ isOpen, onClose, onS
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
-      <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full border border-slate-200 overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 bg-slate-900 text-white">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-3 sm:p-4 backdrop-blur-xs">
+      <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full border border-slate-200 overflow-hidden flex flex-col max-h-[92vh]">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4 bg-slate-900 text-white shrink-0">
           <div className="flex items-center gap-2">
             <UserPlus className="w-5 h-5 text-teal-400" />
             <h2 className="text-base font-bold tracking-tight">Register New Patient</h2>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-white">
+          <button onClick={onClose} aria-label="Close modal" className="text-slate-400 hover:text-white p-1">
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
           {error && (
             <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-md">
               {error}
@@ -87,7 +87,7 @@ export const PatientModal: React.FC<PatientModalProps> = ({ isOpen, onClose, onS
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
                 Date of Birth <span className="text-rose-500">*</span>
@@ -116,7 +116,7 @@ export const PatientModal: React.FC<PatientModalProps> = ({ isOpen, onClose, onS
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
                 Phone Number <span className="text-rose-500">*</span>
@@ -204,17 +204,17 @@ export const PatientModal: React.FC<PatientModalProps> = ({ isOpen, onClose, onS
             />
           </div>
 
-          <div className="pt-3 border-t border-slate-200 flex justify-end gap-2">
+          <div className="pt-3 border-t border-slate-200 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-slate-300 rounded-md text-xs font-medium text-slate-700 hover:bg-slate-50"
+              className="w-full sm:w-auto px-4 py-2.5 sm:py-2 border border-slate-300 rounded-md text-xs font-medium text-slate-700 hover:bg-slate-50"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-md text-xs font-semibold shadow-xs"
+              className="w-full sm:w-auto px-5 py-2.5 sm:py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-md text-xs font-semibold shadow-xs"
             >
               Complete Registration
             </button>

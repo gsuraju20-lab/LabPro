@@ -30,6 +30,7 @@ function LISApp() {
   const { isAuthModalOpen, setIsAuthModalOpen } = useLIS();
   const [portalMode, setPortalMode] = useState<AppPortalMode>('lis');
   const [currentTab, setCurrentTab] = useState<NavTab>('dashboard');
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [isNewRequestOpen, setIsNewRequestOpen] = useState(false);
   const [isNewPatientOpen, setIsNewPatientOpen] = useState(false);
 
@@ -77,9 +78,9 @@ function LISApp() {
   }
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-slate-100 font-sans text-slate-900 select-none">
-      {/* Persistent Sidebar Navigation */}
-      <div className="print:hidden h-full flex">
+    <div className="flex h-screen w-full overflow-hidden bg-slate-100 font-sans text-slate-900 select-none">
+      {/* Desktop Persistent Sidebar Navigation (lg+) */}
+      <div className="hidden lg:flex print:hidden h-full shrink-0">
         <Sidebar
           currentTab={currentTab}
           onSelectTab={setCurrentTab}
@@ -87,6 +88,25 @@ function LISApp() {
           onOpenPlatformAdmin={() => setPortalMode('platform_admin')}
         />
       </div>
+
+      {/* Mobile & Tablet Collapsible Slide-Over Navigation Drawer (<lg) */}
+      {isMobileNavOpen && (
+        <div className="fixed inset-0 z-50 flex lg:hidden print:hidden" role="dialog" aria-modal="true" aria-label="Laboratory Navigation">
+          <div
+            className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs transition-opacity"
+            onClick={() => setIsMobileNavOpen(false)}
+          />
+          <div className="relative z-10 flex h-full max-w-[85vw] shadow-2xl">
+            <Sidebar
+              currentTab={currentTab}
+              onSelectTab={setCurrentTab}
+              onOpenLanding={() => setPortalMode('landing')}
+              onOpenPlatformAdmin={() => setPortalMode('platform_admin')}
+              onCloseMobile={() => setIsMobileNavOpen(false)}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
@@ -101,6 +121,7 @@ function LISApp() {
             onOpenNewPatient={() => setIsNewPatientOpen(true)}
             onOpenLanding={() => setPortalMode('landing')}
             onOpenPlatformAdmin={() => setPortalMode('platform_admin')}
+            onOpenMobileMenu={() => setIsMobileNavOpen(true)}
           />
         </div>
 

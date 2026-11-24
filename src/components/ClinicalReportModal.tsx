@@ -33,12 +33,12 @@ export const ClinicalReportModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-4 backdrop-blur-xs overflow-y-auto print:p-0 print:bg-white print:static">
-      <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full border border-slate-200 overflow-hidden flex flex-col max-h-[92vh] print:max-h-none print:border-none print:shadow-none print:w-full">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-2 sm:p-4 backdrop-blur-xs overflow-y-auto print:p-0 print:bg-white print:static">
+      <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full border border-slate-200 overflow-hidden flex flex-col max-h-[94vh] print:max-h-none print:border-none print:shadow-none print:w-full">
         {/* Modal Action Bar (Hidden in Print) */}
-        <div className="flex items-center justify-between px-6 py-3.5 bg-slate-900 text-white shrink-0 print:hidden">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold tracking-wide">
+        <div className="flex flex-wrap items-center justify-between gap-2 px-4 sm:px-6 py-3 bg-slate-900 text-white shrink-0 print:hidden">
+          <div className="flex flex-wrap items-center gap-2 min-w-0">
+            <span className="text-xs sm:text-sm font-semibold tracking-wide">
               Official Diagnostic Laboratory Report Preview
             </span>
             {isFullyVerified ? (
@@ -53,7 +53,7 @@ export const ClinicalReportModal: React.FC = () => {
               </span>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0 ml-auto">
             <button
               onClick={handlePrint}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded text-xs font-semibold shadow-xs transition-colors"
@@ -63,6 +63,7 @@ export const ClinicalReportModal: React.FC = () => {
             </button>
             <button
               onClick={closeReportModal}
+              aria-label="Close report preview"
               className="p-1.5 text-slate-400 hover:text-white rounded hover:bg-slate-800 transition-colors"
             >
               <X className="w-4 h-4" />
@@ -71,14 +72,14 @@ export const ClinicalReportModal: React.FC = () => {
         </div>
 
         {/* Printable Document Body */}
-        <div className="p-8 sm:p-10 overflow-y-auto flex-1 font-sans text-slate-800 print:p-6 print:overflow-visible" id="clinical-report-content">
+        <div className="p-4 sm:p-8 lg:p-10 overflow-y-auto flex-1 font-sans text-slate-800 print:p-6 print:overflow-visible" id="clinical-report-content">
           {/* Laboratory Letterhead */}
           <div className="border-b-2 border-teal-800 pb-4 mb-6">
-            <div className="flex items-start justify-between">
-              <div>
-                <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-teal-600 inline-block"></span>
-                  {currentLab.name}
+            <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
+              <div className="min-w-0">
+                <h1 className="text-lg sm:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full bg-teal-600 inline-block shrink-0"></span>
+                  <span>{currentLab.name}</span>
                 </h1>
                 <p className="text-xs text-teal-800 font-semibold tracking-wide mt-0.5">
                   {currentLab.headerNote || 'Clinical Pathology & Diagnostic Reference Laboratory'}
@@ -92,7 +93,7 @@ export const ClinicalReportModal: React.FC = () => {
                   </p>
                 )}
               </div>
-              <div className="text-right">
+              <div className="sm:text-right shrink-0">
                 <div className="border-2 border-teal-700 rounded p-2 text-center bg-teal-50/50">
                   <span className="block text-[10px] font-bold text-teal-900 uppercase tracking-widest">
                     DIAGNOSTIC REPORT
@@ -170,7 +171,7 @@ export const ClinicalReportModal: React.FC = () => {
                 return (
                   <div key={result.id} className="border border-slate-200 rounded-lg overflow-hidden">
                     {/* Section Header */}
-                    <div className="bg-slate-100 px-4 py-2 border-b border-slate-200 flex items-center justify-between">
+                    <div className="bg-slate-100 px-4 py-2 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
                       <div>
                         <h2 className="font-bold text-xs uppercase tracking-wider text-slate-900">
                           {result.testName}
@@ -185,7 +186,8 @@ export const ClinicalReportModal: React.FC = () => {
                     </div>
 
                     {/* Parameter Values Table */}
-                    <table className="w-full text-xs text-left">
+                    <div className="overflow-x-auto">
+                    <table className="w-full min-w-[560px] text-xs text-left">
                       <thead className="bg-slate-50/70 border-b border-slate-200 text-slate-600 font-semibold uppercase text-[10px]">
                         <tr>
                           <th className="py-2 px-4">Test Parameter</th>
@@ -266,6 +268,7 @@ export const ClinicalReportModal: React.FC = () => {
                         })}
                       </tbody>
                     </table>
+                    </div>
 
                     {/* Laboratory Technical & Consultant Comments */}
                     {(result.technicianComments || result.verificationComments) && (
@@ -291,7 +294,7 @@ export const ClinicalReportModal: React.FC = () => {
           </div>
 
           {/* Signatory & Authorization Stamp Block */}
-          <div className="mt-8 pt-6 border-t border-slate-200 grid grid-cols-2 sm:grid-cols-3 gap-6 items-end">
+          <div className="mt-8 pt-6 border-t border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-6 items-end">
             <div>
               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">
                 Performing Scientist
@@ -317,7 +320,7 @@ export const ClinicalReportModal: React.FC = () => {
               <p className="text-[9px] text-slate-500">Consultant Clinical Pathologist (MDCN #68902)</p>
             </div>
 
-            <div className="text-right">
+            <div className="sm:text-right">
               {/* Simulated QR Code Authentication Seal */}
               <div className="inline-flex flex-col items-center p-2 bg-slate-50 border border-slate-200 rounded">
                 <div className="w-14 h-14 bg-slate-900 flex items-center justify-center text-white p-1">

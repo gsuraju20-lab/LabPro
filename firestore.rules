@@ -20,43 +20,86 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function isPlatformAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'gsuraju20@gmail.com' ||
+        request.auth.token.email == 'admin@labpro.health' ||
+        exists(/databases/$(database)/documents/platformAdmins/$(request.auth.uid))
+      );
+    }
+
+    // Derives tenant membership securely from authenticated user record
+    function isUserInLab(labId) {
+      return isSignedIn() && (
+        isPlatformAdmin() ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.labId == labId)
+      );
+    }
+
+    function isLabAdmin(labId) {
+      return isSignedIn() && (
+        isPlatformAdmin() ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.labId == labId &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'lab_admin')
+      );
+    }
+
     // User Profiles & Lab Memberships
+    // Users cannot change their own laboratory membership or role
     match /users/{userId} {
       allow get: if isSignedIn() && isValidId(userId);
       allow list: if isSignedIn();
-      allow create, update: if isSignedIn() && isValidId(userId)
-        && (request.auth.uid == userId || request.resource.data.uid == request.auth.uid);
+      allow create: if isSignedIn() && isValidId(userId) && request.auth.uid == userId
+        && (!('isPlatformSuperAdmin' in request.resource.data) || request.resource.data.isPlatformSuperAdmin == false || isPlatformAdmin())
+        && (request.resource.data.role != 'super_admin' || isPlatformAdmin());
+      allow update: if isSignedIn() && isValidId(userId) && (
+        isPlatformAdmin() || (
+          request.auth.uid == userId &&
+          request.resource.data.labId == resource.data.labId &&
+          request.resource.data.role == resource.data.role &&
+          (!('isPlatformSuperAdmin' in request.resource.data) || request.resource.data.isPlatformSuperAdmin == resource.data.isPlatformSuperAdmin)
+        )
+      );
+      allow delete: if isPlatformAdmin();
     }
 
     // Public SaaS Subscription Plans
     match /subscriptionPlans/{planId} {
       allow get, list: if true;
-      allow create, update, delete: if isSignedIn();
+      allow create, update, delete: if isPlatformAdmin();
     }
 
     // Tenant Subscriptions
+    // Protected: Regular users cannot modify subscription status or periods
     match /subscriptions/{subId} {
-      allow get, list: if isSignedIn();
-      allow create, update: if isSignedIn();
+      allow get: if isSignedIn() && isValidId(subId) && (isPlatformAdmin() || isUserInLab(resource.data.labId));
+      allow list: if isPlatformAdmin();
+      allow create: if isSignedIn() && isValidId(subId) && (isPlatformAdmin() || isLabAdmin(request.resource.data.labId));
+      allow update: if isPlatformAdmin();
+      allow delete: if isPlatformAdmin();
     }
 
     // SaaS Payment Transactions
     match /payments/{paymentId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
+      allow get: if isSignedIn() && isValidId(paymentId) && (isPlatformAdmin() || isUserInLab(resource.data.labId));
+      allow list: if isPlatformAdmin();
+      allow create: if isSignedIn() && isValidId(paymentId) && isUserInLab(request.resource.data.labId);
+      allow update, delete: if isPlatformAdmin();
     }
 
     // Platform Super Admin Registry
     match /platformAdmins/{adminId} {
-      allow get, list: if isSignedIn();
-      allow create, update: if isSignedIn();
+      allow get, list: if isPlatformAdmin();
+      allow create, update, delete: if isPlatformAdmin();
     }
 
     // Staff Invitations
     match /invitations/{inviteId} {
       allow get, list: if isSignedIn();
-      allow create, update: if isSignedIn();
+      allow create, update: if isSignedIn() && isLabAdmin(request.resource.data.labId);
+      allow delete: if isPlatformAdmin();
     }
 
     // Laboratory Tenant Gate
@@ -65,90 +108,96 @@ service cloud.firestore {
       allow list: if isSignedIn();
       allow create: if isSignedIn() && isValidId(labId)
         && request.resource.data.name is string && request.resource.data.name.size() <= 128;
-      allow update: if isSignedIn() && isValidId(labId);
+      // Lab admins can update profile details, but CANNOT tamper with subscription status or planId
+      allow update: if isValidId(labId) && (
+        isPlatformAdmin() || (
+          isLabAdmin(labId) &&
+          request.resource.data.status == resource.data.status &&
+          request.resource.data.planId == resource.data.planId
+        )
+      );
+      allow delete: if isPlatformAdmin();
 
       // Subcollection: Departments
       match /departments/{departmentId} {
-        allow get, list: if isSignedIn() && isValidId(labId);
-        allow create, update: if isSignedIn() && isValidId(labId) && isValidId(departmentId)
+        allow get, list: if isUserInLab(labId) && isValidId(labId);
+        allow create, update: if isLabAdmin(labId) && isValidId(labId) && isValidId(departmentId)
           && request.resource.data.labId == labId;
-        allow delete: if isSignedIn() && isValidId(labId) && isValidId(departmentId);
+        allow delete: if isLabAdmin(labId) && isValidId(labId) && isValidId(departmentId);
       }
 
-      // Subcollection: Patients
+      // Subcollection: Patients (Tenant Isolated)
       match /patients/{patientId} {
-        allow get: if isSignedIn() && isValidId(labId) && isValidId(patientId);
-        allow list: if isSignedIn() && isValidId(labId);
-        allow create: if isSignedIn() && isValidId(labId) && isValidId(patientId)
+        allow get: if isUserInLab(labId) && isValidId(labId) && isValidId(patientId);
+        allow list: if isUserInLab(labId) && isValidId(labId);
+        allow create: if isUserInLab(labId) && isValidId(labId) && isValidId(patientId)
           && request.resource.data.labId == labId
           && request.resource.data.fullName is string
           && request.resource.data.fullName.size() <= 128;
-        allow update: if isSignedIn() && isValidId(labId) && isValidId(patientId)
+        allow update: if isUserInLab(labId) && isValidId(labId) && isValidId(patientId)
           && request.resource.data.labId == labId;
-        allow delete: if isSignedIn() && isValidId(labId) && isValidId(patientId);
+        allow delete: if isLabAdmin(labId) && isValidId(labId) && isValidId(patientId);
       }
 
       // Subcollection: Tests Catalogue
       match /tests/{testId} {
-        allow get: if isSignedIn() && isValidId(labId) && isValidId(testId);
-        allow list: if isSignedIn() && isValidId(labId);
-        allow create, update: if isSignedIn() && isValidId(labId) && isValidId(testId)
+        allow get, list: if isUserInLab(labId) && isValidId(labId);
+        allow create, update: if isLabAdmin(labId) && isValidId(labId) && isValidId(testId)
           && request.resource.data.labId == labId
           && request.resource.data.name is string;
-        allow delete: if isSignedIn() && isValidId(labId) && isValidId(testId);
+        allow delete: if isLabAdmin(labId) && isValidId(labId) && isValidId(testId);
       }
 
-      // Subcollection: Requests
+      // Subcollection: Requests (Tenant Isolated & Subscription Status Guarded)
       match /requests/{requestId} {
-        allow get: if isSignedIn() && isValidId(labId) && isValidId(requestId);
-        allow list: if isSignedIn() && isValidId(labId);
-        allow create: if isSignedIn() && isValidId(labId) && isValidId(requestId)
+        allow get, list: if isUserInLab(labId) && isValidId(labId);
+        allow create: if isUserInLab(labId) && isValidId(labId) && isValidId(requestId)
           && request.resource.data.labId == labId
-          && request.resource.data.requestNumber is string;
-        allow update: if isSignedIn() && isValidId(labId) && isValidId(requestId)
+          && request.resource.data.requestNumber is string
+          && (!exists(/databases/$(database)/documents/laboratories/$(labId)) ||
+              (get(/databases/$(database)/documents/laboratories/$(labId)).data.status != 'suspended' &&
+               get(/databases/$(database)/documents/laboratories/$(labId)).data.status != 'expired'));
+        allow update: if isUserInLab(labId) && isValidId(labId) && isValidId(requestId)
           && request.resource.data.labId == labId;
-        allow delete: if isSignedIn() && isValidId(labId) && isValidId(requestId);
+        allow delete: if isLabAdmin(labId) && isValidId(labId) && isValidId(requestId);
       }
 
       // Subcollection: Samples
       match /samples/{sampleId} {
-        allow get: if isSignedIn() && isValidId(labId) && isValidId(sampleId);
-        allow list: if isSignedIn() && isValidId(labId);
-        allow create, update: if isSignedIn() && isValidId(labId) && isValidId(sampleId)
+        allow get, list: if isUserInLab(labId) && isValidId(labId);
+        allow create, update: if isUserInLab(labId) && isValidId(labId) && isValidId(sampleId)
           && request.resource.data.labId == labId;
-        allow delete: if isSignedIn() && isValidId(labId) && isValidId(sampleId);
+        allow delete: if isLabAdmin(labId) && isValidId(labId) && isValidId(sampleId);
       }
 
       // Subcollection: Results
       match /results/{resultId} {
-        allow get: if isSignedIn() && isValidId(labId) && isValidId(resultId);
-        allow list: if isSignedIn() && isValidId(labId);
-        allow create, update: if isSignedIn() && isValidId(labId) && isValidId(resultId)
+        allow get, list: if isUserInLab(labId) && isValidId(labId);
+        allow create, update: if isUserInLab(labId) && isValidId(labId) && isValidId(resultId)
           && request.resource.data.labId == labId;
-        allow delete: if isSignedIn() && isValidId(labId) && isValidId(resultId);
+        allow delete: if isLabAdmin(labId) && isValidId(labId) && isValidId(resultId);
       }
 
       // Subcollection: Invoices
       match /invoices/{invoiceId} {
-        allow get: if isSignedIn() && isValidId(labId) && isValidId(invoiceId);
-        allow list: if isSignedIn() && isValidId(labId);
-        allow create, update: if isSignedIn() && isValidId(labId) && isValidId(invoiceId)
+        allow get, list: if isUserInLab(labId) && isValidId(labId);
+        allow create, update: if isUserInLab(labId) && isValidId(labId) && isValidId(invoiceId)
           && request.resource.data.labId == labId;
-        allow delete: if isSignedIn() && isValidId(labId) && isValidId(invoiceId);
+        allow delete: if isLabAdmin(labId) && isValidId(labId) && isValidId(invoiceId);
       }
 
-      // Subcollection: Audit Logs
+      // Subcollection: Audit Logs (Tamper-proof: append-only, immutable)
       match /auditLogs/{logId} {
-        allow get: if isSignedIn() && isValidId(labId) && isValidId(logId);
-        allow list: if isSignedIn() && isValidId(labId);
-        allow create: if isSignedIn() && isValidId(labId) && isValidId(logId)
+        allow get, list: if isUserInLab(labId) && isValidId(labId);
+        allow create: if isUserInLab(labId) && isValidId(labId) && isValidId(logId)
           && request.resource.data.labId == labId;
+        allow update, delete: if false;
       }
 
       // Subcollection: Staff
       match /staff/{staffId} {
-        allow get, list: if isSignedIn() && isValidId(labId);
-        allow create, update: if isSignedIn() && isValidId(labId) && isValidId(staffId);
+        allow get, list: if isUserInLab(labId) && isValidId(labId);
+        allow create, update, delete: if isLabAdmin(labId) && isValidId(labId) && isValidId(staffId);
       }
     }
   }

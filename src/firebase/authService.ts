@@ -22,6 +22,7 @@ export interface AppUserProfile {
   avatarUrl?: string;
   lastLoginAt: string;
   isDemoAccount?: boolean;
+  isPlatformSuperAdmin?: boolean;
 }
 
 const googleProvider = new GoogleAuthProvider();

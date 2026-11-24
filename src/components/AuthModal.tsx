@@ -69,10 +69,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-xs">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full border border-slate-200 overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-3 sm:p-4 backdrop-blur-xs">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full border border-slate-200 overflow-hidden flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-150">
         {/* Brand Banner */}
-        <div className="bg-slate-900 px-6 py-6 text-white text-center relative overflow-hidden">
+        <div className="bg-slate-900 px-5 sm:px-6 py-5 sm:py-6 text-white text-center relative overflow-hidden shrink-0">
           <div className="absolute top-0 right-0 -mt-4 -mr-4 w-28 h-28 bg-teal-500/10 rounded-full blur-xl pointer-events-none" />
           <div className="flex items-center justify-center mb-2">
             <div className="w-11 h-11 rounded-xl bg-teal-600 flex items-center justify-center text-white shadow-md shadow-teal-900/40">
@@ -83,14 +83,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           <p className="text-xs text-slate-300 mt-0.5">
             Institutional Laboratory Information System • Clinical Access Gate
           </p>
-          <div className="inline-flex items-center gap-1.5 mt-2 px-2.5 py-0.5 rounded-full bg-slate-800 text-teal-300 text-[11px] font-mono border border-slate-700">
-            <Building2 className="w-3 h-3 text-teal-400" />
-            <span>Workspace: {currentLab.name}</span>
+          <div className="inline-flex items-center gap-1.5 mt-2 px-2.5 py-0.5 rounded-full bg-slate-800 text-teal-300 text-[11px] font-mono border border-slate-700 max-w-full">
+            <Building2 className="w-3 h-3 text-teal-400 shrink-0" />
+            <span className="truncate">Workspace: {currentLab.name}</span>
           </div>
 
           {!isBlocking && onClose && (
             <button
               onClick={onClose}
+              aria-label="Close authentication modal"
               className="absolute top-3 right-3 text-slate-400 hover:text-white p-1"
             >
               <X className="w-4 h-4" />
@@ -99,7 +100,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         </div>
 
         {/* Content Body */}
-        <div className="p-6 space-y-5">
+        <div className="p-5 sm:p-6 space-y-5 overflow-y-auto flex-1">
           {error && (
             <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-lg">
               {error}

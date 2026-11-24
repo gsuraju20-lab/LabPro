@@ -120,11 +120,11 @@ export const BillingView: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2 text-xs text-slate-600 shrink-0">
-          <span>Status:</span>
+          <span className="shrink-0">Status:</span>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded text-xs outline-hidden font-medium"
+            className="w-full sm:w-auto px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded text-xs outline-hidden font-medium"
           >
             <option value="all">All Invoices</option>
             <option value="paid">Fully Paid</option>
@@ -137,7 +137,7 @@ export const BillingView: React.FC = () => {
       {/* Invoices Table */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+          <table className="w-full min-w-[820px] text-left text-xs">
             <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase text-[10px]">
               <tr>
                 <th className="py-3 px-4">Invoice #</th>
@@ -187,12 +187,12 @@ export const BillingView: React.FC = () => {
                     <td className="py-3.5 px-3">
                       <StatusBadge type="payment" value={inv.status} />
                     </td>
-                    <td className="py-3.5 px-4 text-right">
+                    <td className="py-3.5 px-4 text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-1.5">
                         {inv.balance > 0 && (
                           <button
                             onClick={() => handleOpenPayment(inv)}
-                            className="px-2.5 py-1 bg-teal-600 hover:bg-teal-700 text-white rounded font-semibold text-xs transition-colors"
+                            className="px-2.5 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded font-semibold text-xs transition-colors whitespace-nowrap"
                           >
                             Record Payment
                           </button>
@@ -216,19 +216,20 @@ export const BillingView: React.FC = () => {
 
       {/* Record Payment Modal */}
       {payingInvoice && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full border border-slate-200 overflow-hidden">
-            <div className="px-6 py-4 bg-teal-800 text-white flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-3 sm:p-4 backdrop-blur-xs">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="px-4 sm:px-6 py-4 bg-teal-800 text-white flex items-center justify-between shrink-0">
               <h2 className="text-sm font-bold">Record Diagnostic Payment</h2>
               <button
                 onClick={() => setPayingInvoice(null)}
-                className="text-white/80 hover:text-white"
+                aria-label="Close payment modal"
+                className="text-white/80 hover:text-white p-1"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleConfirmPayment} className="p-6 space-y-4">
+            <form onSubmit={handleConfirmPayment} className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
               <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs">
                 <p className="font-semibold text-slate-900">{payingInvoice.patientName}</p>
                 <p className="text-slate-500">
@@ -267,17 +268,17 @@ export const BillingView: React.FC = () => {
                 </select>
               </div>
 
-              <div className="pt-2 flex justify-end gap-2">
+              <div className="pt-2 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setPayingInvoice(null)}
-                  className="px-4 py-2 border border-slate-300 rounded-md text-xs font-medium text-slate-700 hover:bg-slate-50"
+                  className="w-full sm:w-auto px-4 py-2.5 sm:py-2 border border-slate-300 rounded-md text-xs font-medium text-slate-700 hover:bg-slate-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-md text-xs font-semibold shadow-xs"
+                  className="w-full sm:w-auto px-5 py-2.5 sm:py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-md text-xs font-semibold shadow-xs"
                 >
                   Confirm & Issue Receipt
                 </button>
@@ -289,19 +290,20 @@ export const BillingView: React.FC = () => {
 
       {/* Official Receipt Printable Modal */}
       {receiptInvoice && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full border border-slate-200 overflow-hidden flex flex-col">
-            <div className="px-4 py-3 bg-slate-900 text-white flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-3 sm:p-4 backdrop-blur-xs">
+          <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full border border-slate-200 overflow-hidden flex flex-col max-h-[92vh]">
+            <div className="px-4 py-3 bg-slate-900 text-white flex items-center justify-between shrink-0">
               <span className="text-xs font-bold uppercase tracking-wider">Payment Receipt</span>
               <button
                 onClick={() => setReceiptInvoice(null)}
-                className="text-slate-400 hover:text-white"
+                aria-label="Close receipt modal"
+                className="text-slate-400 hover:text-white p-1"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="p-6 font-mono text-xs text-slate-800 space-y-4">
+            <div className="p-5 sm:p-6 font-mono text-xs text-slate-800 space-y-4 overflow-y-auto flex-1">
               <div className="text-center border-b border-dashed border-slate-300 pb-3">
                 <h3 className="font-bold text-sm text-slate-900">{currentLab.name}</h3>
                 <p className="text-[10px] text-slate-500 mt-0.5">{currentLab.address}</p>

@@ -144,28 +144,28 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col font-sans">
       {/* Top Header */}
-      <header className="bg-slate-900/90 border-b border-slate-800 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-teal-500/10 border border-teal-500/30 flex items-center justify-center text-teal-400">
+      <header className="bg-slate-900/90 border-b border-slate-800 px-4 sm:px-6 py-4 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+          <div className="w-9 h-9 rounded-xl bg-teal-500/10 border border-teal-500/30 flex items-center justify-center text-teal-400 shrink-0">
             <Activity className="w-5 h-5" />
           </div>
-          <div>
-            <span className="font-bold text-lg text-white">LabPro SaaS Provisioning</span>
-            <p className="text-[11px] text-slate-400">Diagnostic Laboratory Onboarding Wizard</p>
+          <div className="min-w-0">
+            <span className="font-bold text-base sm:text-lg text-white block truncate">LabPro SaaS Provisioning</span>
+            <p className="text-[11px] text-slate-400 truncate">Diagnostic Laboratory Onboarding Wizard</p>
           </div>
         </div>
 
         <button
           onClick={onCancel}
-          className="text-xs text-slate-400 hover:text-white px-3 py-1.5 rounded-lg border border-slate-800 hover:bg-slate-800 transition-colors"
+          className="text-xs text-slate-400 hover:text-white px-3 py-1.5 rounded-lg border border-slate-800 hover:bg-slate-800 transition-colors shrink-0 whitespace-nowrap"
         >
           Cancel Setup
         </button>
       </header>
 
       {/* Stepper Progress */}
-      <div className="max-w-4xl mx-auto w-full px-4 pt-8 pb-4">
-        <div className="grid grid-cols-4 gap-2 text-center text-xs">
+      <div className="max-w-4xl mx-auto w-full px-4 pt-6 sm:pt-8 pb-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
           <div className={`p-2.5 rounded-lg border ${step >= 1 ? 'border-teal-500 bg-teal-950/40 text-teal-300 font-semibold' : 'border-slate-800 text-slate-500'}`}>
             <span className="block text-[10px] uppercase tracking-wider text-slate-400">Step 1</span>
             <span>1. Laboratory Identity</span>
@@ -329,17 +329,17 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                 </div>
               </div>
 
-              <div className="pt-4 flex items-center justify-between">
+              <div className="pt-4 flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-3">
                 <button
                   type="button"
                   onClick={onCancel}
-                  className="px-4 py-2.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white"
+                  className="w-full sm:w-auto px-4 py-2.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white text-center"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs shadow-md transition-colors"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs shadow-md transition-colors"
                 >
                   <span>Continue to Administrator Setup</span>
                   <ArrowRight className="w-4 h-4" />
@@ -421,18 +421,18 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                 </div>
               </div>
 
-              <div className="pt-4 flex items-center justify-between">
+              <div className="pt-4 flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-3">
                 <button
                   type="button"
                   onClick={() => setStep(1)}
-                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white"
                 >
                   <ArrowLeft className="w-4 h-4" />
                   <span>Back to Lab Details</span>
                 </button>
                 <button
                   type="submit"
-                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs shadow-md transition-colors"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs shadow-md transition-colors"
                 >
                   <span>Select Subscription Plan</span>
                   <ArrowRight className="w-4 h-4" />
@@ -514,11 +514,11 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                 })}
               </div>
 
-              <div className="pt-4 flex items-center justify-between">
+              <div className="pt-4 flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-3">
                 <button
                   type="button"
                   onClick={() => setStep(2)}
-                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white"
                 >
                   <ArrowLeft className="w-4 h-4" />
                   <span>Back to Admin Setup</span>
@@ -526,7 +526,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                 <button
                   type="button"
                   onClick={handleNextStep3}
-                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs shadow-md transition-colors"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs shadow-md transition-colors"
                 >
                   <span>Proceed to Final Activation</span>
                   <ArrowRight className="w-4 h-4" />
@@ -640,7 +640,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                       className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-xs font-mono text-white"
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-[11px] text-slate-400 mb-1">Expiry</label>
                       <input
@@ -663,12 +663,12 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                 </div>
               )}
 
-              <div className="pt-4 flex items-center justify-between">
+              <div className="pt-4 flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-3">
                 <button
                   type="button"
                   onClick={() => setStep(3)}
                   disabled={isProcessing}
-                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white disabled:opacity-50"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white disabled:opacity-50"
                 >
                   <ArrowLeft className="w-4 h-4" />
                   <span>Back to Plans</span>
@@ -677,7 +677,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                   type="button"
                   onClick={handleFinalActivation}
                   disabled={isProcessing}
-                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs shadow-md transition-colors disabled:opacity-50"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs shadow-md transition-colors disabled:opacity-50"
                 >
                   {isProcessing ? (
                     <>

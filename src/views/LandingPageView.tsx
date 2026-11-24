@@ -48,19 +48,19 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({
     <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col font-sans selection:bg-teal-500 selection:text-white">
       {/* SaaS Top Navigation */}
       <header className="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-teal-500/10 border border-teal-500/30 flex items-center justify-center text-teal-400 shadow-inner">
-              <Activity className="w-6 h-6" />
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 min-h-16 py-2.5 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-teal-500/10 border border-teal-500/30 flex items-center justify-center text-teal-400 shadow-inner shrink-0">
+              <Activity className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-xl tracking-tight text-white">LabPro</span>
-                <span className="text-[10px] font-semibold bg-teal-500/20 text-teal-300 px-2 py-0.5 rounded-full border border-teal-500/30 uppercase tracking-wider">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <span className="font-bold text-lg sm:text-xl tracking-tight text-white">LabPro</span>
+                <span className="text-[10px] font-semibold bg-teal-500/20 text-teal-300 px-1.5 sm:px-2 py-0.5 rounded-full border border-teal-500/30 uppercase tracking-wider whitespace-nowrap">
                   Cloud LIS
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400">Medical Laboratory Information System</p>
+              <p className="hidden sm:block text-[11px] text-slate-400 truncate">Medical Laboratory Information System</p>
             </div>
           </div>
 
@@ -71,19 +71,21 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({
             <a href="#compliance" className="hover:text-teal-400 transition-colors">Security & Isolation</a>
           </nav>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
             <button
               onClick={onEnterWorkspace}
-              className="text-xs sm:text-sm font-medium text-slate-300 hover:text-white px-3 py-2 rounded-lg hover:bg-slate-800 transition-colors"
+              className="text-xs sm:text-sm font-medium text-slate-300 hover:text-white px-2.5 sm:px-3 py-2 rounded-lg hover:bg-slate-800 transition-colors whitespace-nowrap"
             >
-              Demo Workspace ({currentLab.code})
+              <span className="hidden sm:inline">Demo Workspace ({currentLab.code})</span>
+              <span className="sm:hidden">Demo ({currentLab.code})</span>
             </button>
             <button
               onClick={() => onStartOnboarding('professional', billingCycle)}
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-teal-500 hover:bg-teal-400 text-slate-950 font-semibold rounded-lg text-xs sm:text-sm shadow-md transition-all transform hover:-translate-y-0.5"
+              className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-teal-500 hover:bg-teal-400 text-slate-950 font-semibold rounded-lg text-xs sm:text-sm shadow-md transition-all transform hover:-translate-y-0.5 whitespace-nowrap"
             >
-              <span>Register Laboratory</span>
-              <ArrowRight className="w-4 h-4" />
+              <span className="hidden sm:inline">Register Laboratory</span>
+              <span className="sm:hidden">Register</span>
+              <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </button>
           </div>
         </div>
@@ -94,11 +96,11 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(13,148,136,0.18),rgba(255,255,255,0))]" />
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           {/* Regulatory Alignment Pill */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-800/90 border border-slate-700 text-teal-300 text-xs font-medium mb-8 shadow-xs">
-            <Shield className="w-3.5 h-3.5 text-teal-400" />
+          <div className="inline-flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-1.5 rounded-full bg-slate-800/90 border border-slate-700 text-teal-300 text-[11px] sm:text-xs font-medium mb-8 shadow-xs max-w-full">
+            <Shield className="w-3.5 h-3.5 text-teal-400 shrink-0" />
             <span>ISO 15189:2022 & MLSCN Standard Clinical Architecture</span>
-            <span className="w-1.5 h-1.5 rounded-full bg-teal-400" />
-            <span className="text-slate-400">Multi-Tenant SaaS</span>
+            <span className="hidden sm:inline-block w-1.5 h-1.5 rounded-full bg-teal-400" />
+            <span className="text-slate-400 hidden sm:inline">Multi-Tenant SaaS</span>
           </div>
 
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white max-w-4xl mx-auto leading-tight sm:leading-none">
@@ -265,10 +267,10 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({
             </p>
 
             {/* Monthly / Annual Toggle */}
-            <div className="mt-8 inline-flex items-center p-1 bg-slate-800 border border-slate-700 rounded-xl">
+            <div className="mt-8 inline-flex flex-wrap items-center justify-center gap-1 p-1 bg-slate-800 border border-slate-700 rounded-xl max-w-full">
               <button
                 onClick={() => setBillingCycle('monthly')}
-                className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
+                className={`px-3 sm:px-4 py-2 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
                   billingCycle === 'monthly'
                     ? 'bg-teal-500 text-slate-950 shadow-sm'
                     : 'text-slate-400 hover:text-white'
@@ -278,7 +280,7 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({
               </button>
               <button
                 onClick={() => setBillingCycle('annual')}
-                className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                className={`px-3 sm:px-4 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 whitespace-nowrap ${
                   billingCycle === 'annual'
                     ? 'bg-teal-500 text-slate-950 shadow-sm'
                     : 'text-slate-400 hover:text-white'
@@ -307,7 +309,7 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({
                   }`}
                 >
                   {plan.isPopular && (
-                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-teal-500 text-slate-950 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-sm">
+                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-teal-500 text-slate-950 text-[10px] sm:text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-sm whitespace-nowrap max-w-[92%] truncate">
                       Most Popular for Diagnostic Centers
                     </div>
                   )}
@@ -397,17 +399,17 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({
                 In strict compliance with healthcare confidentiality regulations and Firestore security rules, platform administrators have zero access to clinical patient health records. Every diagnostic report belongs exclusively to the issuing laboratory.
               </p>
             </div>
-            <div className="flex flex-col sm:flex-row items-center gap-4 shrink-0">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 w-full lg:w-auto shrink-0">
               <button
                 onClick={onEnterPlatformAdmin}
-                className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-xs font-semibold transition-colors flex items-center gap-2"
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-xs font-semibold transition-colors flex items-center justify-center gap-2"
               >
                 <Shield className="w-4 h-4 text-teal-400" />
                 <span>Platform Admin Portal</span>
               </button>
               <button
                 onClick={() => onStartOnboarding('starter', 'monthly')}
-                className="px-6 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 text-xs font-bold transition-colors"
+                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 text-xs font-bold transition-colors text-center"
               >
                 Create Tenant Laboratory
               </button>
@@ -418,12 +420,12 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({
 
       {/* Footer */}
       <footer className="mt-auto py-12 bg-slate-950 text-slate-500 text-xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-2 text-slate-400 font-semibold">
-            <Activity className="w-4 h-4 text-teal-400" />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-6 text-center sm:text-left">
+          <div className="flex items-center justify-center sm:justify-start gap-2 text-slate-400 font-semibold">
+            <Activity className="w-4 h-4 text-teal-400 shrink-0" />
             <span>LabPro Medical Laboratory Information System &copy; 2026. All rights reserved.</span>
           </div>
-          <div className="flex items-center gap-6 text-slate-400">
+          <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-slate-400">
             <span>ISO 15189 Aligned</span>
             <span>MLSCN Certified Architecture</span>
             <span>Multi-Tenant Cloud</span>
