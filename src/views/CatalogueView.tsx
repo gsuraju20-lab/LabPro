@@ -14,9 +14,11 @@ import {
 } from 'lucide-react';
 import { useLIS } from '../context/LISContext';
 import { TestDefinition, ParameterDefinition } from '../types/lis';
+import { canPerformAction } from '../utils/rbac';
 
 export const CatalogueView: React.FC = () => {
-  const { currentLab, tests, departments, addTestDefinition, updateTestDefinition } = useLIS();
+  const { currentLab, tests, departments, addTestDefinition, updateTestDefinition, currentRole, isPlatformSuperAdmin } = useLIS();
+  const canManageCatalogue = canPerformAction('manage_catalogue', currentRole, isPlatformSuperAdmin);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('all');
@@ -186,13 +188,15 @@ export const CatalogueView: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={handleOpenAdd}
-          className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 sm:py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0 self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4 stroke-[2.5]" />
-          Configure New Test
-        </button>
+        {canManageCatalogue && (
+          <button
+            onClick={handleOpenAdd}
+            className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 sm:py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0 self-start sm:self-auto"
+          >
+            <Plus className="w-4 h-4 stroke-[2.5]" />
+            Configure New Test
+          </button>
+        )}
       </div>
 
       {/* Filter and Search Bar */}
@@ -279,21 +283,23 @@ export const CatalogueView: React.FC = () => {
                 {test.isActive ? 'Active Assays' : 'Disabled'}
               </span>
 
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => updateTestDefinition(test.id, { isActive: !test.isActive })}
-                  className="text-xs text-slate-500 hover:text-slate-800 font-medium"
-                >
-                  {test.isActive ? 'Disable' : 'Enable'}
-                </button>
-                <button
-                  onClick={() => handleOpenEdit(test)}
-                  className="p-1 text-slate-500 hover:text-teal-700 hover:bg-slate-100 rounded"
-                  title="Edit Configuration"
-                >
-                  <Edit2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
+              {canManageCatalogue && (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => updateTestDefinition(test.id, { isActive: !test.isActive })}
+                    className="text-xs text-slate-500 hover:text-slate-800 font-medium"
+                  >
+                    {test.isActive ? 'Disable' : 'Enable'}
+                  </button>
+                  <button
+                    onClick={() => handleOpenEdit(test)}
+                    className="p-1 text-slate-500 hover:text-teal-700 hover:bg-slate-100 rounded"
+                    title="Edit Configuration"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         ))}

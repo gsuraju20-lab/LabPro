@@ -19,9 +19,11 @@ import {
 } from 'lucide-react';
 import { useLIS } from '../context/LISContext';
 import { SubscriptionPlanId, SubscriptionBillingCycle } from '../types/saas';
+import { canPerformAction } from '../utils/rbac';
 
 export const SubscriptionManagementView: React.FC = () => {
-  const { currentLab, plans, staffList, departments, transactions, updateSubscription } = useLIS();
+  const { currentLab, plans, staffList, departments, transactions, updateSubscription, currentRole, isPlatformSuperAdmin } = useLIS();
+  const canManageSubscription = canPerformAction('manage_subscription', currentRole, isPlatformSuperAdmin);
   const sub = currentLab.subscription;
 
   const currentPlan = plans.find((p) => p.id === (sub?.planId || currentLab.planId)) || plans[0];
@@ -71,6 +73,20 @@ export const SubscriptionManagementView: React.FC = () => {
       setIsUpgradeOpen(false);
     }, 1500);
   };
+
+  if (!canManageSubscription) {
+    return (
+      <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-8 text-center space-y-3">
+        <div className="w-12 h-12 rounded-xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mx-auto">
+          <Lock className="w-6 h-6" />
+        </div>
+        <h2 className="text-base font-bold text-slate-900">Restricted Licensing Module</h2>
+        <p className="text-xs text-slate-500 max-w-md mx-auto">
+          Subscription upgrades and plan quota controls are restricted to Laboratory Administrators.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

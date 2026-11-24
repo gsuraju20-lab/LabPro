@@ -24,16 +24,18 @@ import { SubscriptionPlanId, SubscriptionBillingCycle } from '../types/saas';
 
 interface LandingPageViewProps {
   onStartOnboarding: (preselectedPlan?: SubscriptionPlanId, billingCycle?: SubscriptionBillingCycle) => void;
+  onEnterLogin: () => void;
   onEnterWorkspace: () => void;
   onEnterPlatformAdmin: () => void;
 }
 
 export const LandingPageView: React.FC<LandingPageViewProps> = ({
   onStartOnboarding,
+  onEnterLogin,
   onEnterWorkspace,
   onEnterPlatformAdmin,
 }) => {
-  const { plans, currentLab } = useLIS();
+  const { plans, isAuthenticated, isPlatformSuperAdmin } = useLIS();
   const [billingCycle, setBillingCycle] = useState<SubscriptionBillingCycle>('monthly');
 
   const formatPrice = (amount: number) => {
@@ -73,11 +75,10 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({
 
           <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
             <button
-              onClick={onEnterWorkspace}
+              onClick={isAuthenticated ? onEnterWorkspace : onEnterLogin}
               className="text-xs sm:text-sm font-medium text-slate-300 hover:text-white px-2.5 sm:px-3 py-2 rounded-lg hover:bg-slate-800 transition-colors whitespace-nowrap"
             >
-              <span className="hidden sm:inline">Demo Workspace ({currentLab.code})</span>
-              <span className="sm:hidden">Demo ({currentLab.code})</span>
+              {isAuthenticated ? 'Open Workspace' : 'Sign In'}
             </button>
             <button
               onClick={() => onStartOnboarding('professional', billingCycle)}
@@ -120,10 +121,10 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({
               <ArrowRight className="w-5 h-5" />
             </button>
             <button
-              onClick={onEnterWorkspace}
+              onClick={isAuthenticated ? onEnterWorkspace : onEnterLogin}
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-semibold text-base transition-colors"
             >
-              <span>Open Clinical Workspace Demo</span>
+              <span>{isAuthenticated ? 'Open Clinical Workspace' : 'Sign In to Laboratory Workspace'}</span>
               <ChevronRight className="w-4 h-4 text-slate-400" />
             </button>
           </div>
@@ -400,13 +401,23 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({
               </p>
             </div>
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 w-full lg:w-auto shrink-0">
-              <button
-                onClick={onEnterPlatformAdmin}
-                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-xs font-semibold transition-colors flex items-center justify-center gap-2"
-              >
-                <Shield className="w-4 h-4 text-teal-400" />
-                <span>Platform Admin Portal</span>
-              </button>
+              {isPlatformSuperAdmin ? (
+                <button
+                  onClick={onEnterPlatformAdmin}
+                  className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-xs font-semibold transition-colors flex items-center justify-center gap-2"
+                >
+                  <Shield className="w-4 h-4 text-teal-400" />
+                  <span>Platform Admin Portal</span>
+                </button>
+              ) : (
+                <button
+                  onClick={isAuthenticated ? onEnterWorkspace : onEnterLogin}
+                  className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-xs font-semibold transition-colors flex items-center justify-center gap-2"
+                >
+                  <Lock className="w-4 h-4 text-teal-400" />
+                  <span>{isAuthenticated ? 'Open Workspace' : 'Staff Sign In'}</span>
+                </button>
+              )}
               <button
                 onClick={() => onStartOnboarding('starter', 'monthly')}
                 className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 text-xs font-bold transition-colors text-center"
@@ -429,9 +440,15 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({
             <span>ISO 15189 Aligned</span>
             <span>MLSCN Certified Architecture</span>
             <span>Multi-Tenant Cloud</span>
-            <button onClick={onEnterPlatformAdmin} className="text-teal-400 hover:underline">
-              Platform Admin
-            </button>
+            {isPlatformSuperAdmin ? (
+              <button onClick={onEnterPlatformAdmin} className="text-teal-400 hover:underline">
+                Platform Admin
+              </button>
+            ) : (
+              <button onClick={isAuthenticated ? onEnterWorkspace : onEnterLogin} className="text-teal-400 hover:underline">
+                {isAuthenticated ? 'Open Workspace' : 'Sign In'}
+              </button>
+            )}
           </div>
         </div>
       </footer>

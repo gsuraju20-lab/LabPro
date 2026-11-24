@@ -11,6 +11,7 @@
         "role": { "type": "string", "enum": ["super_admin", "lab_admin", "receptionist", "lab_scientist", "lab_supervisor", "pathologist", "accountant"] },
         "labId": { "type": "string", "maxLength": 128 },
         "licenseNumber": { "type": "string", "maxLength": 64 },
+        "isActive": { "type": "boolean" },
         "lastLoginAt": { "type": "string" },
         "createdAt": { "type": "string" }
       },
@@ -272,6 +273,22 @@
         "createdAt": { "type": "string" }
       },
       "required": ["id", "email", "fullName", "role", "createdAt"]
+    },
+    "StaffInvitation": {
+      "title": "StaffInvitation",
+      "description": "Laboratory administrator invitation linking an invited user email to a tenant and role.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "labId": { "type": "string", "maxLength": 128 },
+        "laboratoryName": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 128 },
+        "fullName": { "type": "string", "maxLength": 128 },
+        "role": { "type": "string", "enum": ["lab_admin", "receptionist", "lab_scientist", "lab_supervisor", "pathologist", "accountant"] },
+        "status": { "type": "string", "enum": ["pending", "accepted", "revoked"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "labId", "email", "role", "status", "createdAt"]
     }
   },
   "firestore": {
@@ -294,6 +311,10 @@
     "/platformAdmins/{adminId}": {
       "schema": "PlatformAdmin",
       "description": "Platform super administrator authorization records."
+    },
+    "/invitations/{inviteId}": {
+      "schema": "StaffInvitation",
+      "description": "Admin-issued staff onboarding invitations linking verified email addresses to laboratory tenants."
     },
     "/laboratories/{labId}": {
       "schema": "Laboratory",

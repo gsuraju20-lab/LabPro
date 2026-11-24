@@ -265,12 +265,12 @@ export const INITIAL_PAYMENT_TRANSACTIONS: PaymentTransaction[] = [
 export const INITIAL_PLATFORM_ADMINS: PlatformAdmin[] = [
   {
     id: 'padmin-01',
-    email: 'admin@labpro.health',
-    fullName: 'Engr. Damilola Adeleke',
+    email: 'surajugabriel499@gmail.com',
+    fullName: 'Suraju Gabriel',
     role: 'platform_super_admin',
     permissions: ['manage_laboratories', 'manage_plans', 'view_analytics', 'manage_billing', 'system_audit'],
     createdAt: '2025-12-01T00:00:00Z',
-    lastLoginAt: '2026-11-02T07:00:00Z',
+    lastLoginAt: '2026-11-24T07:00:00Z',
   },
 ];
 

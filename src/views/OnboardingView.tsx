@@ -30,7 +30,14 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
   onCancel,
   onSuccess,
 }) => {
-  const { plans, registerLaboratoryTenant } = useLIS();
+  const {
+    plans,
+    registerLaboratoryTenant,
+    currentUserProfile,
+    isAuthenticated,
+    loginGoogle,
+    isAuthLoading,
+  } = useLIS();
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
 
   // Step 1: Laboratory Details
@@ -45,10 +52,9 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
   const [accreditation, setAccreditation] = useState('MLSCN Registered Medical Testing Facility');
 
   // Step 2: Administrator Credentials
-  const [adminName, setAdminName] = useState('');
+  const [adminName, setAdminName] = useState(currentUserProfile?.displayName || '');
   const [adminLicense, setAdminLicense] = useState('');
-  const [adminEmail, setAdminEmail] = useState('');
-  const [adminPassword, setAdminPassword] = useState('');
+  const [adminEmail, setAdminEmail] = useState(currentUserProfile?.email || '');
 
   // Step 3: Subscription Selection
   const [selectedPlanId, setSelectedPlanId] = useState<SubscriptionPlanId>(initialPlanId);
@@ -89,12 +95,30 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
     setStep(2);
   };
 
+  const handleVerifyGoogleAdmin = async () => {
+    setErrorMsg('');
+    try {
+      const profile = await loginGoogle();
+      setAdminEmail(profile.email);
+      if (!adminName && profile.displayName) {
+        setAdminName(profile.displayName);
+      }
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'Google verification failed. Please try again.');
+    }
+  };
+
   const handleNextStep2 = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!adminName || !adminEmail) {
-      setErrorMsg('Please specify the administrator name and email.');
+    if (!isAuthenticated || !currentUserProfile || currentUserProfile.isDemoAccount) {
+      setErrorMsg('Please verify your identity with Google Sign-In before continuing.');
       return;
     }
+    if (!adminName) {
+      setErrorMsg('Please specify the laboratory administrator name.');
+      return;
+    }
+    setAdminEmail(currentUserProfile.email);
     setErrorMsg('');
     setStep(3);
   };
@@ -125,7 +149,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
         currencySymbol,
         accreditation,
         adminName,
-        adminEmail,
+        adminEmail: currentUserProfile?.email || adminEmail,
         adminLicense,
         planId: selectedPlanId,
         billingCycle,
@@ -189,8 +213,21 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
       <div className="flex-1 max-w-3xl mx-auto w-full px-4 py-6 flex flex-col justify-center">
         <div className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-6 sm:p-8 shadow-xl">
           {errorMsg && (
-            <div className="mb-6 p-3 rounded-xl bg-rose-950/80 border border-rose-800 text-rose-200 text-xs">
-              {errorMsg}
+            <div className="mb-6 p-3 rounded-xl bg-rose-950/80 border border-rose-800 text-rose-200 text-xs space-y-1.5">
+              <p>{errorMsg}</p>
+              {errorMsg.toLowerCase().includes('popup') &&
+                typeof window !== 'undefined' &&
+                window.self !== window.top && (
+                  <a
+                    href={window.location.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-teal-300 hover:text-teal-200 underline"
+                  >
+                    <span>Open registration in a new tab</span>
+                    <ArrowRight className="w-3 h-3" />
+                  </a>
+                )}
             </div>
           )}
 
@@ -358,11 +395,50 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                 </div>
                 <h2 className="text-xl font-bold text-white">Create Laboratory Administrator Account</h2>
                 <p className="text-xs text-slate-400 mt-1">
-                  This user will hold super administrator privileges over staff accounts, test pricing, and clinical departments for this workspace.
+                  Verify your identity with Google Sign-In. This account becomes the Laboratory Administrator for this tenant only (never Platform Super Admin).
                 </p>
               </div>
 
               <div className="space-y-4">
+                <div className="p-4 rounded-xl bg-slate-900 border border-slate-700 space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-semibold text-slate-200">
+                      Firebase Authentication Identity
+                    </span>
+                    {isAuthenticated && currentUserProfile && !currentUserProfile.isDemoAccount ? (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-400">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        Verified
+                      </span>
+                    ) : (
+                      <span className="text-[11px] text-amber-400 font-medium">Required</span>
+                    )}
+                  </div>
+
+                  {isAuthenticated && currentUserProfile && !currentUserProfile.isDemoAccount ? (
+                    <div className="text-xs text-slate-300 space-y-1">
+                      <p>
+                        Signed in as <strong className="text-white">{currentUserProfile.email}</strong>
+                      </p>
+                      <p className="text-[11px] text-slate-400">
+                        Assigned role upon creation: <span className="text-teal-300 font-mono">lab_admin</span>
+                      </p>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleVerifyGoogleAdmin}
+                      disabled={isAuthLoading}
+                      className="w-full flex items-center justify-center gap-2.5 py-2.5 px-4 bg-white hover:bg-slate-100 text-slate-900 rounded-lg text-xs font-bold shadow-sm transition-colors disabled:opacity-50"
+                    >
+                      <Lock className="w-3.5 h-3.5 text-teal-700" />
+                      <span>
+                        {isAuthLoading ? 'Verifying Google Account...' : 'Verify Identity with Google Sign-In'}
+                      </span>
+                    </button>
+                  )}
+                </div>
+
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-1">
                     Administrator Full Name & Clinical Title <span className="text-rose-400">*</span>
@@ -392,32 +468,16 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Administrator Login Email <span className="text-rose-400">*</span>
+                    Verified Administrator Login Email <span className="text-rose-400">*</span>
                   </label>
                   <input
                     type="email"
                     required
-                    value={adminEmail}
-                    onChange={(e) => setAdminEmail(e.target.value)}
-                    placeholder="admin@yourfacility.com"
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-teal-500"
+                    readOnly
+                    value={currentUserProfile?.email || adminEmail}
+                    placeholder="Sign in with Google above to populate your verified email"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3.5 py-2.5 text-sm text-slate-300 placeholder-slate-500 focus:outline-none cursor-not-allowed"
                   />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Password
-                  </label>
-                  <input
-                    type="password"
-                    value={adminPassword}
-                    onChange={(e) => setAdminPassword(e.target.value)}
-                    placeholder="••••••••••••"
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-teal-500"
-                  />
-                  <p className="text-[11px] text-slate-400 mt-1">
-                    You can also log in directly using Google Single Sign-On matching this email address.
-                  </p>
                 </div>
               </div>
 
@@ -561,7 +621,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                 </div>
                 <div className="flex items-center justify-between text-slate-300">
                   <span>Administrator Account:</span>
-                  <span className="text-white">{adminEmail}</span>
+                  <span className="text-white">{currentUserProfile?.email || adminEmail}</span>
                 </div>
                 <div className="flex items-center justify-between border-t border-slate-800 pt-2 text-sm">
                   <span className="font-semibold text-slate-200">Subscription Dues:</span>

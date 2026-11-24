@@ -19,6 +19,7 @@ import {
   X,
 } from 'lucide-react';
 import { useLIS } from '../context/LISContext';
+import { getPermittedTabs } from '../utils/rbac';
 
 export type NavTab =
   | 'dashboard'
@@ -126,6 +127,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
   ];
 
+  const permittedTabs = getPermittedTabs(currentRole, isPlatformSuperAdmin);
+  const visibleNavItems = navItems.filter((item) => permittedTabs.includes(item.id));
+
   return (
     <aside className="w-72 lg:w-64 max-w-[85vw] h-full bg-slate-900 text-slate-300 flex flex-col shrink-0 border-r border-slate-800 select-none">
       {/* Brand Header */}
@@ -177,7 +181,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="px-2 pb-1 text-[10px] font-semibold tracking-wider uppercase text-slate-400">
           Core Laboratory Workflow
         </div>
-        {navItems.map((item) => {
+        {visibleNavItems.map((item) => {
           const Icon = item.icon;
           const isActive = currentTab === item.id;
           return (

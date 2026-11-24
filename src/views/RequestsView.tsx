@@ -15,6 +15,7 @@ import { useLIS } from '../context/LISContext';
 import { StatusBadge } from '../components/StatusBadge';
 import { RequestPriority, RequestStatus, PaymentStatus } from '../types/lis';
 import { NavTab } from '../components/Sidebar';
+import { canPerformAction } from '../utils/rbac';
 
 interface RequestsViewProps {
   onOpenNewRequest: () => void;
@@ -25,7 +26,10 @@ export const RequestsView: React.FC<RequestsViewProps> = ({
   onOpenNewRequest,
   onNavigate,
 }) => {
-  const { currentLab, requests, tests, openReportModal, samples } = useLIS();
+  const { currentLab, requests, tests, openReportModal, samples, currentRole, isPlatformSuperAdmin } = useLIS();
+  const canCreateRequest = canPerformAction('create_request', currentRole, isPlatformSuperAdmin);
+  const canEnterResults = canPerformAction('enter_results', currentRole, isPlatformSuperAdmin);
+  const canManageSamples = canPerformAction('manage_samples', currentRole, isPlatformSuperAdmin);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -58,13 +62,15 @@ export const RequestsView: React.FC<RequestsViewProps> = ({
           </p>
         </div>
 
-        <button
-          onClick={onOpenNewRequest}
-          className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 sm:py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0 self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4 stroke-[2.5]" />
-          Create Test Order
-        </button>
+        {canCreateRequest && (
+          <button
+            onClick={onOpenNewRequest}
+            className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 sm:py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0 self-start sm:self-auto"
+          >
+            <Plus className="w-4 h-4 stroke-[2.5]" />
+            Create Test Order
+          </button>
+        )}
       </div>
 
       {/* Filter and Search Bar */}
@@ -194,20 +200,24 @@ export const RequestsView: React.FC<RequestsViewProps> = ({
                             </button>
                           ) : (
                             <>
-                              <button
-                                onClick={() => onNavigate('results')}
-                                className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-sky-50 hover:bg-sky-100 text-sky-800 rounded font-semibold text-xs border border-sky-200 transition-colors whitespace-nowrap"
-                              >
-                                <FileSpreadsheet className="w-3.5 h-3.5" />
-                                Enter Results
-                              </button>
-                              <button
-                                onClick={() => onNavigate('samples')}
-                                className="p-1.5 text-slate-500 hover:text-amber-700 hover:bg-amber-50 rounded border border-transparent hover:border-amber-200 transition-colors"
-                                title="View Specimen Samples"
-                              >
-                                <TestTube2 className="w-3.5 h-3.5" />
-                              </button>
+                              {canEnterResults && (
+                                <button
+                                  onClick={() => onNavigate('results')}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-sky-50 hover:bg-sky-100 text-sky-800 rounded font-semibold text-xs border border-sky-200 transition-colors whitespace-nowrap"
+                                >
+                                  <FileSpreadsheet className="w-3.5 h-3.5" />
+                                  Enter Results
+                                </button>
+                              )}
+                              {canManageSamples && (
+                                <button
+                                  onClick={() => onNavigate('samples')}
+                                  className="p-1.5 text-slate-500 hover:text-amber-700 hover:bg-amber-50 rounded border border-transparent hover:border-amber-200 transition-colors"
+                                  title="View Specimen Samples"
+                                >
+                                  <TestTube2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
                             </>
                           )}
                         </div>

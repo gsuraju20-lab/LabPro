@@ -42,6 +42,8 @@ export const PlatformAdminView: React.FC<PlatformAdminViewProps> = ({
     updateSubscription,
     updatePlanPricing,
     isPlatformSuperAdmin,
+    currentUserProfile,
+    loginGoogle,
   } = useLIS();
 
   const [activeTab, setActiveTab] = useState<'laboratories' | 'plans' | 'transactions'>('laboratories');
@@ -64,10 +66,18 @@ export const PlatformAdminView: React.FC<PlatformAdminViewProps> = ({
             </span>
             <h2 className="text-xl font-bold text-white pt-1">Platform Admin Access Denied</h2>
             <p className="text-xs text-slate-400 leading-relaxed">
-              Platform Super Administrator credentials required. Laboratory administrators and staff are strictly restricted to their own diagnostic workspace.
+              Verified Platform Super Administrator credentials are required. Laboratory administrators and clinical staff are strictly restricted to their own diagnostic workspace.
             </p>
           </div>
           <div className="pt-2 flex flex-col gap-2">
+            {!currentUserProfile && (
+              <button
+                onClick={() => loginGoogle()}
+                className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold transition-colors shadow-sm"
+              >
+                Sign in with Platform Admin Google Account
+              </button>
+            )}
             <button
               onClick={onBackToWorkspace}
               className="w-full py-2.5 px-4 bg-teal-600 hover:bg-teal-500 text-white rounded-lg text-xs font-semibold transition-colors shadow-sm"

@@ -18,6 +18,7 @@ import {
 import { useLIS } from '../context/LISContext';
 import { StatusBadge } from '../components/StatusBadge';
 import { NavTab } from '../components/Sidebar';
+import { canAccessTab, canPerformAction } from '../utils/rbac';
 
 interface DashboardViewProps {
   onNavigate: (tab: NavTab) => void;
@@ -39,7 +40,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     auditLogs,
     tests,
     openReportModal,
+    currentRole,
+    isPlatformSuperAdmin,
   } = useLIS();
+
+  const canCreateRequest = canPerformAction('create_request', currentRole, isPlatformSuperAdmin);
+  const canManagePatients = canPerformAction('manage_patients', currentRole, isPlatformSuperAdmin);
+  const canViewCatalogue = canAccessTab('catalogue', currentRole, isPlatformSuperAdmin);
+  const canEnterResults = canPerformAction('enter_results', currentRole, isPlatformSuperAdmin);
 
   // Metrics
   const totalPatients = patients.length;
@@ -82,20 +90,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-            <button
-              onClick={onOpenNewRequest}
-              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 sm:py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
-            >
-              <Plus className="w-4 h-4 stroke-[2.5]" />
-              New Test Order
-            </button>
-            <button
-              onClick={onOpenNewPatient}
-              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 sm:py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold border border-slate-700 transition-colors"
-            >
-              <Users className="w-4 h-4" />
-              Register Patient
-            </button>
+            {canCreateRequest && (
+              <button
+                onClick={onOpenNewRequest}
+                className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 sm:py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
+              >
+                <Plus className="w-4 h-4 stroke-[2.5]" />
+                New Test Order
+              </button>
+            )}
+            {canManagePatients && (
+              <button
+                onClick={onOpenNewPatient}
+                className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 sm:py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold border border-slate-700 transition-colors"
+              >
+                <Users className="w-4 h-4" />
+                Register Patient
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -241,12 +253,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         >
                           Print Report
                         </button>
-                      ) : (
+                      ) : canEnterResults ? (
                         <button
                           onClick={() => onNavigate('results')}
                           className="px-2.5 py-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded text-[11px] font-medium transition-colors whitespace-nowrap"
                         >
                           Process
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => onNavigate('requests')}
+                          className="px-2.5 py-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded text-[11px] font-medium transition-colors whitespace-nowrap"
+                        >
+                          View
                         </button>
                       )}
                     </td>
@@ -280,12 +299,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               ))}
             </div>
 
-            <button
-              onClick={() => onNavigate('catalogue')}
-              className="w-full mt-4 py-2 border border-slate-200 rounded-md text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors text-center"
-            >
-              Manage Test Catalogue
-            </button>
+            {canViewCatalogue && (
+              <button
+                onClick={() => onNavigate('catalogue')}
+                className="w-full mt-4 py-2 border border-slate-200 rounded-md text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors text-center"
+              >
+                Manage Test Catalogue
+              </button>
+            )}
           </div>
 
           {/* Audit Trail Snippet */}

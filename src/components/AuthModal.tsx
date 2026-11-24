@@ -1,29 +1,29 @@
 import React, { useState } from 'react';
 import {
-  Shield,
   Activity,
-  LogIn,
   LogOut,
   UserCheck,
-  CheckCircle2,
-  Lock,
   Building2,
   X,
-  Sparkles,
 } from 'lucide-react';
 import { useLIS } from '../context/LISContext';
 import { UserRole } from '../types/lis';
+import { ENABLE_DEV_BYPASS_TOOLS } from '../config/env';
 
 interface AuthModalProps {
   isOpen: boolean;
   onClose?: () => void;
   isBlocking?: boolean;
+  onStartOnboarding?: () => void;
+  onOpenLanding?: () => void;
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({
   isOpen,
   onClose,
   isBlocking = false,
+  onStartOnboarding,
+  onOpenLanding,
 }) => {
   const {
     currentUserProfile,
@@ -40,27 +40,30 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   if (!isOpen) return null;
 
+  const isUnassigned = currentUserProfile?.labId === 'unassigned';
+
   const handleGoogleLogin = async () => {
     setError(null);
     try {
       await loginGoogle();
       if (onClose) onClose();
     } catch (err: any) {
-      console.error('Google Sign-In failed:', err);
-      setError(err?.message || 'Google authentication failed. Please try again or use direct staff sign-in.');
+      console.warn('Google Sign-In note:', err?.message || err);
+      setError(err?.message || 'Google authentication failed. Please allow popups and try again.');
     }
   };
 
   const handleStaffLogin = async () => {
+    if (!ENABLE_DEV_BYPASS_TOOLS) return;
     setError(null);
     try {
       const staffMember = staffList.find((s) => s.role === selectedStaffRole) || staffList[0];
       await loginStaff({
-        name: staffMember.fullName,
-        email: staffMember.email,
-        role: staffMember.role,
+        name: staffMember?.fullName || 'Development Staff',
+        email: staffMember?.email || `dev-${selectedStaffRole}@labpro.local`,
+        role: selectedStaffRole,
         labId: currentLab.id,
-        licenseNumber: staffMember.licenseNumber,
+        licenseNumber: staffMember?.licenseNumber,
       });
       if (onClose) onClose();
     } catch (err: any) {
@@ -85,7 +88,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </p>
           <div className="inline-flex items-center gap-1.5 mt-2 px-2.5 py-0.5 rounded-full bg-slate-800 text-teal-300 text-[11px] font-mono border border-slate-700 max-w-full">
             <Building2 className="w-3 h-3 text-teal-400 shrink-0" />
-            <span className="truncate">Workspace: {currentLab.name}</span>
+            <span className="truncate">
+              {isUnassigned
+                ? 'Workspace: Pending Assignment'
+                : currentUserProfile
+                ? `Workspace: ${currentLab.name}`
+                : 'Workspace: Sign in to continue'}
+            </span>
           </div>
 
           {!isBlocking && onClose && (
@@ -102,8 +111,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         {/* Content Body */}
         <div className="p-5 sm:p-6 space-y-5 overflow-y-auto flex-1">
           {error && (
-            <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-lg">
-              {error}
+            <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-lg space-y-1.5">
+              <p>{error}</p>
+              {error.toLowerCase().includes('popup') &&
+                typeof window !== 'undefined' &&
+                window.self !== window.top && (
+                  <a
+                    href={window.location.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-block text-[11px] font-semibold text-teal-700 hover:text-teal-800 underline"
+                  >
+                    Open in a new browser tab &rarr;
+                  </a>
+                )}
             </div>
           )}
 
@@ -123,6 +144,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   License: {currentUserProfile.licenseNumber}
                 </p>
               )}
+            </div>
+          )}
+
+          {isUnassigned && (
+            <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 space-y-1.5">
+              <p className="font-bold">No Laboratory Tenant Assigned</p>
+              <p className="text-[11px] leading-relaxed text-amber-800">
+                Your account is authenticated, but you have not yet been added by a Laboratory Administrator. Ask your Lab Admin to invite <strong>{currentUserProfile?.email}</strong> under Staff Management, or register a new laboratory workspace.
+              </p>
             </div>
           )}
 
@@ -158,43 +188,67 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </button>
           </div>
 
-          <div className="relative flex items-center justify-center my-3">
-            <span className="h-px bg-slate-200 w-full" />
-            <span className="px-3 bg-white text-[10px] uppercase font-bold text-slate-400 absolute">
-              Or Laboratory Staff Sign-In
-            </span>
-          </div>
+          {ENABLE_DEV_BYPASS_TOOLS && (
+            <>
+              <div className="relative flex items-center justify-center my-3">
+                <span className="h-px bg-slate-200 w-full" />
+                <span className="px-3 bg-white text-[10px] uppercase font-bold text-slate-400 absolute">
+                  Or Laboratory Staff Sign-In
+                </span>
+              </div>
 
-          {/* Primary Action 2: Staff Direct Role Access */}
-          <div className="space-y-3">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Select Medical Role Credential
-              </label>
-              <select
-                value={selectedStaffRole}
-                onChange={(e) => setSelectedStaffRole(e.target.value as UserRole)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-medium focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 outline-hidden capitalize"
-              >
-                <option value="pathologist">Consultant Pathologist (MDCN / FMCPath)</option>
-                <option value="lab_supervisor">Laboratory Supervisor (MLSCN Senior)</option>
-                <option value="lab_scientist">Medical Laboratory Scientist (MLS Bench)</option>
-                <option value="receptionist">Medical Receptionist / Phlebotomist</option>
-                <option value="accountant">Billing Accountant (ICAN)</option>
-                <option value="lab_admin">Laboratory Administrator</option>
-                <option value="super_admin">Super Administrator</option>
-              </select>
+              {/* Development Only: Staff Direct Role Access */}
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Select Medical Role Credential
+                  </label>
+                  <select
+                    value={selectedStaffRole}
+                    onChange={(e) => setSelectedStaffRole(e.target.value as UserRole)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-medium focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 outline-hidden capitalize"
+                  >
+                    <option value="pathologist">Consultant Pathologist (MDCN / FMCPath)</option>
+                    <option value="lab_supervisor">Laboratory Supervisor (MLSCN Senior)</option>
+                    <option value="lab_scientist">Medical Laboratory Scientist (MLS Bench)</option>
+                    <option value="receptionist">Medical Receptionist / Phlebotomist</option>
+                    <option value="accountant">Billing Accountant (ICAN)</option>
+                    <option value="lab_admin">Laboratory Administrator</option>
+                  </select>
+                </div>
+
+                <button
+                  onClick={handleStaffLogin}
+                  disabled={isAuthLoading}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-teal-700 hover:bg-teal-800 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors disabled:opacity-50"
+                >
+                  <UserCheck className="w-4 h-4" />
+                  <span>Authorize Personnel Login</span>
+                </button>
+              </div>
+            </>
+          )}
+
+          {(onStartOnboarding || onOpenLanding) && (
+            <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs">
+              {onStartOnboarding && (
+                <button
+                  onClick={onStartOnboarding}
+                  className="w-full sm:w-auto px-3 py-2 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-800 font-semibold transition-colors"
+                >
+                  Register New Laboratory
+                </button>
+              )}
+              {onOpenLanding && (
+                <button
+                  onClick={onOpenLanding}
+                  className="w-full sm:w-auto px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-100 font-medium transition-colors"
+                >
+                  Public SaaS Portal
+                </button>
+              )}
             </div>
-
-            <button
-              onClick={handleStaffLogin}
-              disabled={isAuthLoading}
-              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-teal-700 hover:bg-teal-800 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors disabled:opacity-50"
-            >
-              <UserCheck className="w-4 h-4" />
-              <span>Authorize Personnel Login</span>
-            </button>
-          </div>
+          )}
 
           {/* Logout button if currently signed in */}
           {currentUserProfile && (

@@ -7,6 +7,8 @@ import {
   updateDoc,
   deleteDoc,
   onSnapshot,
+  query,
+  where,
 } from 'firebase/firestore';
 import { db, auth } from './config';
 import { handleFirestoreError, OperationType } from './errors';
@@ -20,8 +22,11 @@ import {
   TestResult,
   Invoice,
   StaffMember,
+  StaffInvitation,
+  PaymentStatus,
   AuditLog,
 } from '../types/lis';
+import { LaboratorySubscription, PaymentTransaction } from '../types/saas';
 import {
   INITIAL_LABORATORIES,
   INITIAL_DEPARTMENTS,
@@ -116,7 +121,7 @@ export async function bootstrapTenantData(labId: string): Promise<boolean> {
 
     return true;
   } catch (error) {
-    handleFirestoreError(error, OperationType.WRITE, labPath);
+    console.warn('Tenant bootstrap skipped or restricted:', labPath, error);
     return false;
   }
 }
@@ -124,6 +129,71 @@ export async function bootstrapTenantData(labId: string): Promise<boolean> {
 // ==========================================
 // REAL-TIME FIRESTORE SUBSCRIPTIONS
 // ==========================================
+
+export function subscribeToLaboratory(
+  labId: string,
+  onData: (lab: Laboratory | null) => void,
+  onError?: (err: any) => void
+): () => void {
+  if (!auth.currentUser || !labId || labId === 'unassigned') {
+    return () => {};
+  }
+  const ref = doc(db, 'laboratories', labId);
+  return onSnapshot(
+    ref,
+    (snapshot) => {
+      onData(snapshot.exists() ? (snapshot.data() as Laboratory) : null);
+    },
+    (err) => {
+      console.warn('Laboratory snapshot subscription note:', err);
+      if (onError) onError(err);
+    }
+  );
+}
+
+export function subscribeToAllLaboratories(
+  onData: (labs: Laboratory[]) => void,
+  onError?: (err: any) => void
+): () => void {
+  if (!auth.currentUser) {
+    return () => {};
+  }
+  const q = collection(db, 'laboratories');
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const items: Laboratory[] = [];
+      snapshot.forEach((d) => items.push(d.data() as Laboratory));
+      onData(items);
+    },
+    (err) => {
+      console.warn('All laboratories snapshot note:', err);
+      if (onError) onError(err);
+    }
+  );
+}
+
+export function subscribeToTransactions(
+  onData: (transactions: PaymentTransaction[]) => void,
+  onError?: (err: any) => void
+): () => void {
+  if (!auth.currentUser) {
+    return () => {};
+  }
+  const q = collection(db, 'payments');
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const items: PaymentTransaction[] = [];
+      snapshot.forEach((d) => items.push(d.data() as PaymentTransaction));
+      onData(items);
+    },
+    (err) => {
+      console.warn('Transactions snapshot note:', err);
+      if (onError) onError(err);
+    }
+  );
+}
 
 export function subscribeToPatients(
   labId: string,
@@ -397,6 +467,25 @@ export async function updateRequestStatusInFirestore(
   }
 }
 
+export async function updateRequestPaymentInFirestore(
+  labId: string,
+  requestId: string,
+  paymentStatus: PaymentStatus,
+  amountPaid: number
+): Promise<void> {
+  if (!auth.currentUser) return;
+  const path = `laboratories/${labId}/requests/${requestId}`;
+  try {
+    await updateDoc(doc(db, 'laboratories', labId, 'requests', requestId), {
+      paymentStatus,
+      amountPaid,
+      updatedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, path);
+  }
+}
+
 export async function updateSampleInFirestore(
   labId: string,
   sampleId: string,
@@ -536,5 +625,92 @@ export async function updateStaffInFirestore(
     await updateDoc(doc(db, 'laboratories', labId, 'staff', staffId), updates);
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, path);
+  }
+}
+
+export async function createStaffInvitationInFirestore(invite: StaffInvitation): Promise<void> {
+  if (!auth.currentUser) return;
+  const path = `invitations/${invite.id}`;
+  try {
+    await setDoc(doc(db, 'invitations', invite.id), {
+      ...invite,
+      email: invite.email.trim().toLowerCase(),
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, path);
+  }
+}
+
+export async function findPendingInvitationByEmail(email: string): Promise<StaffInvitation | null> {
+  if (!auth.currentUser || !email) return null;
+  const normalized = email.trim().toLowerCase();
+  try {
+    const q = query(
+      collection(db, 'invitations'),
+      where('email', '==', normalized),
+      where('status', '==', 'pending')
+    );
+    const snap = await getDocs(q);
+    if (snap.empty) return null;
+    return snap.docs[0].data() as StaffInvitation;
+  } catch (error) {
+    console.warn('Invitation lookup note:', error);
+    return null;
+  }
+}
+
+export async function markInvitationAcceptedInFirestore(inviteId: string, uid: string): Promise<void> {
+  if (!auth.currentUser) return;
+  const path = `invitations/${inviteId}`;
+  try {
+    await updateDoc(doc(db, 'invitations', inviteId), {
+      status: 'accepted',
+      acceptedByUid: uid,
+      acceptedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.warn('Invitation accept note:', path, error);
+  }
+}
+
+export async function saveSubscriptionToFirestore(subscription: LaboratorySubscription): Promise<void> {
+  if (!auth.currentUser) return;
+  const path = `subscriptions/${subscription.id}`;
+  try {
+    await setDoc(doc(db, 'subscriptions', subscription.id), subscription, { merge: true });
+  } catch (error) {
+    console.warn('Subscription sync note:', path, error);
+  }
+}
+
+export async function savePaymentTransactionToFirestore(tx: PaymentTransaction): Promise<void> {
+  if (!auth.currentUser) return;
+  const path = `payments/${tx.id}`;
+  try {
+    await setDoc(doc(db, 'payments', tx.id), tx);
+  } catch (error) {
+    console.warn('Payment transaction sync note:', path, error);
+  }
+}
+
+export async function updateUserActiveStatusInLab(
+  labId: string,
+  email: string,
+  isActive: boolean
+): Promise<void> {
+  if (!auth.currentUser || !labId || !email) return;
+  const normalized = email.trim().toLowerCase();
+  try {
+    const q = query(
+      collection(db, 'users'),
+      where('labId', '==', labId),
+      where('email', '==', normalized)
+    );
+    const snap = await getDocs(q);
+    for (const userDoc of snap.docs) {
+      await updateDoc(doc(db, 'users', userDoc.id), { isActive });
+    }
+  } catch (error) {
+    console.warn('User active status sync note:', error);
   }
 }

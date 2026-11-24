@@ -17,6 +17,7 @@ import {
 import { useLIS } from '../context/LISContext';
 import { Patient } from '../types/lis';
 import { StatusBadge } from '../components/StatusBadge';
+import { canPerformAction } from '../utils/rbac';
 
 interface PatientsViewProps {
   onOpenNewPatient: () => void;
@@ -27,7 +28,9 @@ export const PatientsView: React.FC<PatientsViewProps> = ({
   onOpenNewPatient,
   onOpenNewRequest,
 }) => {
-  const { patients, requests, results, openReportModal } = useLIS();
+  const { patients, requests, results, openReportModal, currentRole, isPlatformSuperAdmin } = useLIS();
+  const canManagePatients = canPerformAction('manage_patients', currentRole, isPlatformSuperAdmin);
+  const canCreateRequest = canPerformAction('create_request', currentRole, isPlatformSuperAdmin);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
@@ -65,13 +68,15 @@ export const PatientsView: React.FC<PatientsViewProps> = ({
           </p>
         </div>
 
-        <button
-          onClick={onOpenNewPatient}
-          className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 sm:py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0 self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4 stroke-[2.5]" />
-          Register Patient
-        </button>
+        {canManagePatients && (
+          <button
+            onClick={onOpenNewPatient}
+            className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 sm:py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0 self-start sm:self-auto"
+          >
+            <Plus className="w-4 h-4 stroke-[2.5]" />
+            Register Patient
+          </button>
+        )}
       </div>
 
       {/* Search and Table */}
@@ -234,15 +239,17 @@ export const PatientsView: React.FC<PatientsViewProps> = ({
               <div>
                 <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-2 flex items-center justify-between">
                   <span>Diagnostic Requests History ({patientRequests.length})</span>
-                  <button
-                    onClick={() => {
-                      setSelectedPatient(null);
-                      onOpenNewRequest();
-                    }}
-                    className="text-xs text-teal-700 hover:text-teal-800 font-semibold"
-                  >
-                    + New Request
-                  </button>
+                  {canCreateRequest && (
+                    <button
+                      onClick={() => {
+                        setSelectedPatient(null);
+                        onOpenNewRequest();
+                      }}
+                      className="text-xs text-teal-700 hover:text-teal-800 font-semibold"
+                    >
+                      + New Request
+                    </button>
+                  )}
                 </h3>
 
                 {patientRequests.length === 0 ? (

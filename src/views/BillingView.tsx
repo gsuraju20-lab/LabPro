@@ -14,9 +14,11 @@ import {
 import { useLIS } from '../context/LISContext';
 import { StatusBadge } from '../components/StatusBadge';
 import { Invoice } from '../types/lis';
+import { canPerformAction } from '../utils/rbac';
 
 export const BillingView: React.FC = () => {
-  const { currentLab, invoices, recordPayment } = useLIS();
+  const { currentLab, invoices, recordPayment, currentRole, isPlatformSuperAdmin } = useLIS();
+  const canManageBilling = canPerformAction('manage_billing', currentRole, isPlatformSuperAdmin);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -189,7 +191,7 @@ export const BillingView: React.FC = () => {
                     </td>
                     <td className="py-3.5 px-4 text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-1.5">
-                        {inv.balance > 0 && (
+                        {inv.balance > 0 && canManageBilling && (
                           <button
                             onClick={() => handleOpenPayment(inv)}
                             className="px-2.5 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded font-semibold text-xs transition-colors whitespace-nowrap"

@@ -16,9 +16,10 @@ import {
 import { useLIS } from '../context/LISContext';
 import { TestResult } from '../types/lis';
 import { StatusBadge } from '../components/StatusBadge';
+import { canPerformAction } from '../utils/rbac';
 
 export const VerificationView: React.FC = () => {
-  const { results, tests, verifyResult, amendResult, currentRole, currentStaff, openReportModal } = useLIS();
+  const { results, tests, verifyResult, amendResult, currentRole, currentStaff, openReportModal, isPlatformSuperAdmin } = useLIS();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedResult, setSelectedResult] = useState<TestResult | null>(null);
@@ -35,11 +36,7 @@ export const VerificationView: React.FC = () => {
   const [amendmentReason, setAmendmentReason] = useState('');
   const [amendedValues, setAmendedValues] = useState<Record<string, string | number>>({});
 
-  const canVerify =
-    currentRole === 'pathologist' ||
-    currentRole === 'lab_supervisor' ||
-    currentRole === 'lab_admin' ||
-    currentRole === 'super_admin';
+  const canVerify = canPerformAction('verify_results', currentRole, isPlatformSuperAdmin);
 
   const pendingVerificationList = results.filter((r) => r.status === 'submitted');
   const verifiedList = results.filter((r) => r.status === 'verified');
@@ -90,7 +87,7 @@ export const VerificationView: React.FC = () => {
         {!canVerify ? (
           <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs font-medium">
             <Lock className="w-3.5 h-3.5 text-amber-600" />
-            <span>Read-Only mode: Switch to Pathologist or Supervisor in header to approve.</span>
+            <span>Read-Only mode: Consultant Pathologist or Supervisor authorization required to approve.</span>
           </div>
         ) : (
           <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold">

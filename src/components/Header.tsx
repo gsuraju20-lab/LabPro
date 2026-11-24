@@ -19,6 +19,8 @@ import {
 import { useLIS } from '../context/LISContext';
 import { UserRole } from '../types/lis';
 import { NavTab } from './Sidebar';
+import { ENABLE_DEV_BYPASS_TOOLS } from '../config/env';
+import { canPerformAction } from '../utils/rbac';
 
 interface HeaderProps {
   onNavigate: (tab: NavTab) => void;
@@ -54,7 +56,15 @@ export const Header: React.FC<HeaderProps> = ({
     setIsAuthModalOpen,
     openReportModal,
     isPlatformSuperAdmin,
+    canSimulateRole,
   } = useLIS();
+
+  const canCreateRequest = canPerformAction('create_request', currentRole, isPlatformSuperAdmin);
+  const canManagePatients = canPerformAction('manage_patients', currentRole, isPlatformSuperAdmin);
+  const canManageSamples = canPerformAction('manage_samples', currentRole, isPlatformSuperAdmin);
+  const canEnterResults = canPerformAction('enter_results', currentRole, isPlatformSuperAdmin);
+  const canManageSubscription = canPerformAction('manage_subscription', currentRole, isPlatformSuperAdmin);
+  const hasQuickActions = canCreateRequest || canManagePatients || canManageSamples || canEnterResults;
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -130,15 +140,17 @@ export const Header: React.FC<HeaderProps> = ({
   const totalResultsCount =
     matchedPatients.length + matchedRequests.length + matchedSamples.length + matchedTests.length;
 
-  const roles: { role: UserRole; label: string; desc: string }[] = [
-    { role: 'super_admin', label: 'Super Administrator', desc: 'Full system privileges & tenancy' },
-    { role: 'lab_admin', label: 'Laboratory Administrator', desc: 'Department & operations management' },
-    { role: 'pathologist', label: 'Consultant Pathologist', desc: 'Result verification & release' },
-    { role: 'lab_supervisor', label: 'Laboratory Supervisor', desc: 'Technical oversight & review' },
-    { role: 'lab_scientist', label: 'Medical Lab Scientist (MLS)', desc: 'Sample processing & result entry' },
-    { role: 'receptionist', label: 'Medical Receptionist', desc: 'Patient intake & test orders' },
-    { role: 'accountant', label: 'Billing / Accountant', desc: 'Invoices, payments & receipts' },
-  ];
+  const devRoles: { role: UserRole; label: string; desc: string }[] = ENABLE_DEV_BYPASS_TOOLS
+    ? [
+        { role: 'super_admin', label: 'Super Administrator', desc: 'Full system privileges & tenancy' },
+        { role: 'lab_admin', label: 'Laboratory Administrator', desc: 'Department & operations management' },
+        { role: 'pathologist', label: 'Consultant Pathologist', desc: 'Result verification & release' },
+        { role: 'lab_supervisor', label: 'Laboratory Supervisor', desc: 'Technical oversight & review' },
+        { role: 'lab_scientist', label: 'Medical Lab Scientist (MLS)', desc: 'Sample processing & result entry' },
+        { role: 'receptionist', label: 'Medical Receptionist', desc: 'Patient intake & test orders' },
+        { role: 'accountant', label: 'Billing / Accountant', desc: 'Invoices, payments & receipts' },
+      ]
+    : [];
 
   return (
     <header className="h-16 bg-white border-b border-slate-200 px-3 sm:px-6 flex items-center justify-between gap-2 sm:gap-4 shrink-0 sticky top-0 z-30">
@@ -319,62 +331,72 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Quick Action Menu */}
-        <div className="relative" ref={quickRef}>
-          <button
-            onClick={() => setIsQuickActionOpen(!isQuickActionOpen)}
-            aria-label="Quick Actions"
-            className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-2 sm:py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-md text-xs font-semibold shadow-xs transition-colors"
-          >
-            <Plus className="w-4 h-4 stroke-[2.5]" />
-            <span className="hidden sm:inline">Action</span>
-            <ChevronDown className="w-3 h-3" />
-          </button>
+        {hasQuickActions && (
+          <div className="relative" ref={quickRef}>
+            <button
+              onClick={() => setIsQuickActionOpen(!isQuickActionOpen)}
+              aria-label="Quick Actions"
+              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-2 sm:py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-md text-xs font-semibold shadow-xs transition-colors"
+            >
+              <Plus className="w-4 h-4 stroke-[2.5]" />
+              <span className="hidden sm:inline">Action</span>
+              <ChevronDown className="w-3 h-3" />
+            </button>
 
-          {isQuickActionOpen && (
-            <div className="absolute right-0 mt-2 w-52 max-w-[calc(100vw-1.5rem)] bg-white rounded-lg shadow-xl border border-slate-200 py-1.5 z-50">
-              <button
-                onClick={() => {
-                  setIsQuickActionOpen(false);
-                  onOpenNewRequest();
-                }}
-                className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"
-              >
-                <ClipboardList className="w-4 h-4 text-teal-600" />
-                <span>New Test Request</span>
-              </button>
-              <button
-                onClick={() => {
-                  setIsQuickActionOpen(false);
-                  onOpenNewPatient();
-                }}
-                className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"
-              >
-                <User className="w-4 h-4 text-blue-600" />
-                <span>Register Patient</span>
-              </button>
-              <button
-                onClick={() => {
-                  setIsQuickActionOpen(false);
-                  onNavigate('samples');
-                }}
-                className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"
-              >
-                <TestTube2 className="w-4 h-4 text-amber-600" />
-                <span>Receive Samples</span>
-              </button>
-              <button
-                onClick={() => {
-                  setIsQuickActionOpen(false);
-                  onNavigate('results');
-                }}
-                className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"
-              >
-                <FlaskConical className="w-4 h-4 text-sky-600" />
-                <span>Enter Test Results</span>
-              </button>
-            </div>
-          )}
-        </div>
+            {isQuickActionOpen && (
+              <div className="absolute right-0 mt-2 w-52 max-w-[calc(100vw-1.5rem)] bg-white rounded-lg shadow-xl border border-slate-200 py-1.5 z-50">
+                {canCreateRequest && (
+                  <button
+                    onClick={() => {
+                      setIsQuickActionOpen(false);
+                      onOpenNewRequest();
+                    }}
+                    className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                  >
+                    <ClipboardList className="w-4 h-4 text-teal-600" />
+                    <span>New Test Request</span>
+                  </button>
+                )}
+                {canManagePatients && (
+                  <button
+                    onClick={() => {
+                      setIsQuickActionOpen(false);
+                      onOpenNewPatient();
+                    }}
+                    className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                  >
+                    <User className="w-4 h-4 text-blue-600" />
+                    <span>Register Patient</span>
+                  </button>
+                )}
+                {canManageSamples && (
+                  <button
+                    onClick={() => {
+                      setIsQuickActionOpen(false);
+                      onNavigate('samples');
+                    }}
+                    className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                  >
+                    <TestTube2 className="w-4 h-4 text-amber-600" />
+                    <span>Receive Samples</span>
+                  </button>
+                )}
+                {canEnterResults && (
+                  <button
+                    onClick={() => {
+                      setIsQuickActionOpen(false);
+                      onNavigate('results');
+                    }}
+                    className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                  >
+                    <FlaskConical className="w-4 h-4 text-sky-600" />
+                    <span>Enter Test Results</span>
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Multi-Tenant Laboratory Switcher */}
         <div className="relative" ref={labRef}>
@@ -433,70 +455,87 @@ export const Header: React.FC<HeaderProps> = ({
                   </button>
                 ))}
               </div>
-              <div className="pt-2 mt-2 border-t border-slate-100">
-                <button
-                  onClick={() => {
-                    onNavigate('subscription');
-                    setIsLabMenuOpen(false);
-                  }}
-                  className="w-full text-center py-1.5 px-2 bg-teal-50 hover:bg-teal-100 text-teal-800 rounded text-xs font-semibold transition-colors"
-                >
-                  Manage Subscription & Quotas
-                </button>
-              </div>
+              {canManageSubscription && (
+                <div className="pt-2 mt-2 border-t border-slate-100">
+                  <button
+                    onClick={() => {
+                      onNavigate('subscription');
+                      setIsLabMenuOpen(false);
+                    }}
+                    className="w-full text-center py-1.5 px-2 bg-teal-50 hover:bg-teal-100 text-teal-800 rounded text-xs font-semibold transition-colors"
+                  >
+                    Manage Subscription & Quotas
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
 
-        {/* Role Switcher */}
-        <div className="relative" ref={roleRef}>
-          <button
-            onClick={() => setIsRoleMenuOpen(!isRoleMenuOpen)}
-            aria-label="Switch LIS Role"
-            className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 sm:py-1.5 bg-slate-50 border border-slate-200 rounded-md text-xs hover:bg-slate-100 transition-colors"
+        {/* Role Indicator (Dev Simulator strictly stripped from production builds) */}
+        {ENABLE_DEV_BYPASS_TOOLS && canSimulateRole ? (
+          <div className="relative" ref={roleRef}>
+            <button
+              onClick={() => setIsRoleMenuOpen(!isRoleMenuOpen)}
+              aria-label="Simulate LIS Role"
+              className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 sm:py-1.5 bg-slate-50 border border-slate-200 rounded-md text-xs hover:bg-slate-100 transition-colors"
+            >
+              <UserCheck className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+              <div className="text-left hidden sm:block">
+                <p className="font-semibold text-slate-800 leading-tight capitalize">
+                  {currentRole.replace('_', ' ')}
+                </p>
+              </div>
+              <ChevronDown className="w-3 h-3 text-slate-500 hidden sm:block" />
+            </button>
+
+            {isRoleMenuOpen && (
+              <div className="fixed sm:absolute right-3 sm:right-0 top-16 sm:top-full mt-1 sm:mt-2 w-64 max-w-[calc(100vw-1.5rem)] bg-white rounded-lg shadow-xl border border-slate-200 p-2 z-50">
+                <div className="px-2 py-1 border-b border-slate-100 mb-1">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-amber-700">
+                    Dev Mode: Simulate LIS Role (RBAC)
+                  </p>
+                  <p className="text-[11px] text-slate-500">
+                    Testing-only role preview. Disabled in production.
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  {devRoles.map((r) => (
+                    <button
+                      key={r.role}
+                      onClick={() => {
+                        setCurrentRole(r.role);
+                        setIsRoleMenuOpen(false);
+                      }}
+                      className={`w-full text-left p-2 rounded text-xs transition-colors flex items-center justify-between ${
+                        r.role === currentRole ? 'bg-blue-50 text-blue-900 font-semibold' : 'hover:bg-slate-50 text-slate-700'
+                      }`}
+                    >
+                      <div>
+                        <p>{r.label}</p>
+                        <p className="text-[10px] text-slate-400">{r.desc}</p>
+                      </div>
+                      {r.role === currentRole && <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div
+            title={`Assigned Role: ${currentRole.replace('_', ' ')}`}
+            aria-label="Assigned LIS Role"
+            className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 sm:py-1.5 bg-slate-50 border border-slate-200 rounded-md text-xs select-none"
           >
-            <UserCheck className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+            <UserCheck className="w-3.5 h-3.5 text-teal-600 shrink-0" />
             <div className="text-left hidden sm:block">
               <p className="font-semibold text-slate-800 leading-tight capitalize">
                 {currentRole.replace('_', ' ')}
               </p>
             </div>
-            <ChevronDown className="w-3 h-3 text-slate-500 hidden sm:block" />
-          </button>
-
-          {isRoleMenuOpen && (
-            <div className="fixed sm:absolute right-3 sm:right-0 top-16 sm:top-full mt-1 sm:mt-2 w-64 max-w-[calc(100vw-1.5rem)] bg-white rounded-lg shadow-xl border border-slate-200 p-2 z-50">
-              <div className="px-2 py-1 border-b border-slate-100 mb-1">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                  Simulate LIS Role (RBAC)
-                </p>
-                <p className="text-[11px] text-slate-500">
-                  Test verification, entry, and administrative privileges.
-                </p>
-              </div>
-              <div className="space-y-1">
-                {roles.map((r) => (
-                  <button
-                    key={r.role}
-                    onClick={() => {
-                      setCurrentRole(r.role);
-                      setIsRoleMenuOpen(false);
-                    }}
-                    className={`w-full text-left p-2 rounded text-xs transition-colors flex items-center justify-between ${
-                      r.role === currentRole ? 'bg-blue-50 text-blue-900 font-semibold' : 'hover:bg-slate-50 text-slate-700'
-                    }`}
-                  >
-                    <div>
-                      <p>{r.label}</p>
-                      <p className="text-[10px] text-slate-400">{r.desc}</p>
-                    </div>
-                    {r.role === currentRole && <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* User Account / Auth Gate */}
         <button

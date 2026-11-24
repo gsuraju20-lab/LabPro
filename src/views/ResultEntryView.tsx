@@ -11,13 +11,16 @@ import {
   HelpCircle,
   Check,
   RotateCcw,
+  Lock,
 } from 'lucide-react';
 import { useLIS } from '../context/LISContext';
 import { TestRequest, TestDefinition, Sample, TestResult } from '../types/lis';
 import { StatusBadge } from '../components/StatusBadge';
+import { canPerformAction } from '../utils/rbac';
 
 export const ResultEntryView: React.FC = () => {
-  const { requests, tests, samples, results, saveResult, currentStaff } = useLIS();
+  const { requests, tests, samples, results, saveResult, currentStaff, currentRole, isPlatformSuperAdmin } = useLIS();
+  const canEnterResults = canPerformAction('enter_results', currentRole, isPlatformSuperAdmin);
 
   // Selected Order & Test
   const [selectedRequestId, setSelectedRequestId] = useState<string>('');
@@ -120,6 +123,12 @@ export const ResultEntryView: React.FC = () => {
             Dynamic parameter reporting, biological reference range validation, real-time critical flags, and submission for pathologist review.
           </p>
         </div>
+        {!canEnterResults && (
+          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs font-medium">
+            <Lock className="w-3.5 h-3.5 text-amber-600" />
+            <span>Read-Only: Bench result entry requires Scientist, Supervisor, or Pathologist role.</span>
+          </div>
+        )}
       </div>
 
       {feedbackMessage && (
@@ -404,24 +413,26 @@ export const ResultEntryView: React.FC = () => {
                     <span className="text-[11px] text-slate-500">
                       Logged Scientist: <strong className="text-slate-800">{currentStaff.fullName}</strong>
                     </span>
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleSave(false)}
-                        className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 sm:py-2 border border-slate-300 rounded-md text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
-                      >
-                        <Save className="w-3.5 h-3.5" />
-                        Save Draft
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleSave(true)}
-                        className="inline-flex items-center justify-center gap-1.5 px-5 py-2.5 sm:py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-md text-xs font-semibold shadow-xs transition-colors"
-                      >
-                        <Send className="w-3.5 h-3.5" />
-                        Submit for Pathologist Verification
-                      </button>
-                    </div>
+                    {canEnterResults && (
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleSave(false)}
+                          className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 sm:py-2 border border-slate-300 rounded-md text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+                        >
+                          <Save className="w-3.5 h-3.5" />
+                          Save Draft
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSave(true)}
+                          className="inline-flex items-center justify-center gap-1.5 px-5 py-2.5 sm:py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-md text-xs font-semibold shadow-xs transition-colors"
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                          Submit for Pathologist Verification
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : (

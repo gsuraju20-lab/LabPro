@@ -27,10 +27,27 @@ export interface Laboratory {
   status?: 'active' | 'suspended' | 'trial' | 'expired';
   suspendedReason?: string;
   ownerEmail?: string;
+  ownerUid?: string;
   planId?: SubscriptionPlanId;
   subscription?: LaboratorySubscription;
   createdAt: string;
   updatedAt?: string;
+}
+
+export interface StaffInvitation {
+  id: string;
+  labId: string;
+  laboratoryName: string;
+  email: string;
+  fullName: string;
+  role: UserRole;
+  department?: string;
+  licenseNumber?: string;
+  status: 'pending' | 'accepted';
+  createdByUid?: string;
+  acceptedByUid?: string;
+  createdAt: string;
+  acceptedAt?: string;
 }
 
 export interface Department {

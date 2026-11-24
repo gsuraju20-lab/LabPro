@@ -252,7 +252,7 @@ export function runComprehensiveSaaSAudit(): AuditTestResult[] {
   // TEST 4 — PLATFORM ADMINISTRATION
   // ================================================================
   try {
-    const superAdmin = INITIAL_PLATFORM_ADMINS[0]; // admin@labpro.health
+    const superAdmin = INITIAL_PLATFORM_ADMINS[0]; // surajugabriel499@gmail.com
     const labAdmin = INITIAL_STAFF.find((s) => s.role === 'lab_admin')!;
 
     // Super Admin can view all laboratories
@@ -261,10 +261,8 @@ export function runComprehensiveSaaSAudit(): AuditTestResult[] {
     // Laboratory Admin cannot access Platform Admin View
     const verifyPlatformAdminAccess = (role: string, email: string) => {
       return (
-        role === 'platform_super_admin' ||
-        role === 'super_admin' ||
-        email === 'admin@labpro.health' ||
-        email === 'gsuraju20@gmail.com'
+        (role === 'platform_super_admin' || role === 'super_admin') &&
+        email.toLowerCase() === 'surajugabriel499@gmail.com'
       );
     };
 

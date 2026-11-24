@@ -13,9 +13,11 @@ import {
   Coins,
   FileText,
   X,
+  Lock,
 } from 'lucide-react';
 import { useLIS } from '../context/LISContext';
 import { Laboratory, Department } from '../types/lis';
+import { canPerformAction } from '../utils/rbac';
 
 export const SettingsView: React.FC = () => {
   const {
@@ -27,7 +29,10 @@ export const SettingsView: React.FC = () => {
     laboratories,
     setCurrentLabId,
     createLaboratory,
+    currentRole,
+    isPlatformSuperAdmin,
   } = useLIS();
+  const canManageSettings = canPerformAction('manage_settings', currentRole, isPlatformSuperAdmin);
 
   // General Lab Profile Form State
   const [labName, setLabName] = useState(currentLab.name);
@@ -122,6 +127,20 @@ export const SettingsView: React.FC = () => {
     setNewLabAddress('');
   };
 
+  if (!canManageSettings) {
+    return (
+      <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-8 text-center space-y-3">
+        <div className="w-12 h-12 rounded-xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mx-auto">
+          <Lock className="w-6 h-6" />
+        </div>
+        <h2 className="text-base font-bold text-slate-900">Restricted Settings Module</h2>
+        <p className="text-xs text-slate-500 max-w-md mx-auto">
+          Laboratory configuration and department governance require Laboratory Administrator privileges.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -136,13 +155,15 @@ export const SettingsView: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={() => setIsNewLabModalOpen(true)}
-          className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 sm:py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0 self-start sm:self-auto"
-        >
-          <Building2 className="w-4 h-4 text-teal-400 shrink-0" />
-          Provision New Laboratory Workspace
-        </button>
+        {isPlatformSuperAdmin && (
+          <button
+            onClick={() => setIsNewLabModalOpen(true)}
+            className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 sm:py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0 self-start sm:self-auto"
+          >
+            <Building2 className="w-4 h-4 text-teal-400 shrink-0" />
+            Provision New Laboratory Workspace
+          </button>
+        )}
       </div>
 
       {savedSuccess && (
@@ -167,20 +188,22 @@ export const SettingsView: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto shrink-0">
-          <span className="text-xs text-slate-400 shrink-0">Switch Workspace:</span>
-          <select
-            value={currentLab.id}
-            onChange={(e) => setCurrentLabId(e.target.value)}
-            className="w-full sm:w-auto px-3 py-2 sm:py-1.5 bg-slate-800 border border-slate-700 text-white rounded text-xs outline-hidden font-medium"
-          >
-            {laboratories.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.name} ({l.code})
-              </option>
-            ))}
-          </select>
-        </div>
+        {isPlatformSuperAdmin && (
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto shrink-0">
+            <span className="text-xs text-slate-400 shrink-0">Switch Workspace:</span>
+            <select
+              value={currentLab.id}
+              onChange={(e) => setCurrentLabId(e.target.value)}
+              className="w-full sm:w-auto px-3 py-2 sm:py-1.5 bg-slate-800 border border-slate-700 text-white rounded text-xs outline-hidden font-medium"
+            >
+              {laboratories.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name} ({l.code})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">

@@ -10,12 +10,15 @@ import {
   FileCheck,
   UserCheck,
   X,
+  Lock,
 } from 'lucide-react';
 import { useLIS } from '../context/LISContext';
 import { StaffMember, UserRole } from '../types/lis';
+import { canPerformAction } from '../utils/rbac';
 
 export const StaffView: React.FC = () => {
-  const { currentLab, staffList, addStaffMember, toggleStaffStatus, currentRole } = useLIS();
+  const { currentLab, staffList, addStaffMember, toggleStaffStatus, currentRole, isPlatformSuperAdmin } = useLIS();
+  const canManageStaff = canPerformAction('manage_staff', currentRole, isPlatformSuperAdmin);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [fullName, setFullName] = useState('');
@@ -83,6 +86,20 @@ export const StaffView: React.FC = () => {
       desc: 'Invoicing, payment clearing, discounts, receivables management.',
     },
   };
+
+  if (!canManageStaff) {
+    return (
+      <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-8 text-center space-y-3">
+        <div className="w-12 h-12 rounded-xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mx-auto">
+          <Lock className="w-6 h-6" />
+        </div>
+        <h2 className="text-base font-bold text-slate-900">Restricted Administrative Module</h2>
+        <p className="text-xs text-slate-500 max-w-md mx-auto">
+          Staff roster and role assignment controls require Laboratory Administrator privileges.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

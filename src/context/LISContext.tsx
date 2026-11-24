@@ -23,31 +23,31 @@ import {
   PlanLimits,
 } from '../types/saas';
 import {
-  INITIAL_LABORATORIES,
   INITIAL_DEPARTMENTS,
   INITIAL_TESTS,
-  INITIAL_PATIENTS,
-  INITIAL_REQUESTS,
-  INITIAL_SAMPLES,
-  INITIAL_RESULTS,
-  INITIAL_INVOICES,
-  INITIAL_STAFF,
-  INITIAL_AUDIT_LOGS,
   INITIAL_SUBSCRIPTION_PLANS,
-  INITIAL_PAYMENT_TRANSACTIONS,
   INITIAL_PLATFORM_ADMINS,
 } from '../data/initialData';
-import { verifyFirestoreConnection } from '../firebase/config';
+import { verifyFirestoreConnection, auth } from '../firebase/config';
+import { ENABLE_DEV_BYPASS_TOOLS } from '../config/env';
+import { canPerformAction, LISAction } from '../utils/rbac';
 import {
   AppUserProfile,
   loginWithGoogle,
+  completeRedirectSignIn,
   loginAsStaffMember,
   logoutUser,
   subscribeToAuthState,
+  verifySessionValidity,
   fetchUserProfile,
+  assignLabOwnerProfile,
+  isTrustedPlatformAdminEmail,
 } from '../firebase/authService';
 import {
   bootstrapTenantData,
+  subscribeToLaboratory,
+  subscribeToAllLaboratories,
+  subscribeToTransactions,
   subscribeToPatients,
   subscribeToRequests,
   subscribeToSamples,
@@ -61,6 +61,7 @@ import {
   updatePatientInFirestore,
   addRequestToFirestore,
   updateRequestStatusInFirestore,
+  updateRequestPaymentInFirestore,
   updateSampleInFirestore,
   saveResultToFirestore,
   recordPaymentInFirestore,
@@ -72,6 +73,10 @@ import {
   saveLaboratorySettingsToFirestore,
   addStaffToFirestore,
   updateStaffInFirestore,
+  createStaffInvitationInFirestore,
+  saveSubscriptionToFirestore,
+  savePaymentTransactionToFirestore,
+  updateUserActiveStatusInLab,
 } from '../firebase/firestoreService';
 
 interface LISContextType {
@@ -86,11 +91,17 @@ interface LISContextType {
   currentUserProfile: AppUserProfile | null;
   currentRole: UserRole;
   setCurrentRole: (role: UserRole) => void;
+  canSimulateRole: boolean;
+  isAuthReady: boolean;
+  isAuthenticated: boolean;
+  isStaffSuspended: boolean;
+  sessionExpiredNotice: boolean;
+  clearSessionExpiredNotice: () => void;
   currentStaff: StaffMember;
   staffList: StaffMember[];
   addStaffMember: (member: Omit<StaffMember, 'id' | 'labId' | 'joinedAt'>) => void;
   toggleStaffStatus: (staffId: string) => void;
-  loginGoogle: () => Promise<void>;
+  loginGoogle: () => Promise<AppUserProfile>;
   loginStaff: (info: { name: string; email: string; role: UserRole; labId: string; licenseNumber?: string }) => Promise<void>;
   logout: () => Promise<void>;
   isAuthModalOpen: boolean;
@@ -197,111 +208,276 @@ interface LISContextType {
 
 const LISContext = createContext<LISContextType | undefined>(undefined);
 
+const NEUTRAL_PLACEHOLDER_LAB: Laboratory = {
+  id: 'unassigned',
+  name: 'LabPro Clinical Workspace',
+  code: 'LIS',
+  licenseNumber: '',
+  email: '',
+  phone: '',
+  address: '',
+  currency: 'NGN',
+  currencySymbol: '₦',
+  status: 'active',
+  planId: 'starter',
+  createdAt: '',
+};
+
+const SESSION_IDLE_TIMEOUT_MS = 30 * 60 * 1000;
+
 export const LISProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [laboratories, setLaboratories] = useState<Laboratory[]>(INITIAL_LABORATORIES);
-  const [currentLabId, setCurrentLabId] = useState<string>('lab-apex');
+  const [laboratories, setLaboratories] = useState<Laboratory[]>([]);
+  const [currentLabId, setCurrentLabId] = useState<string>('');
 
   const [plans, setPlans] = useState<SubscriptionPlan[]>(INITIAL_SUBSCRIPTION_PLANS);
-  const [transactions, setTransactions] = useState<PaymentTransaction[]>(INITIAL_PAYMENT_TRANSACTIONS);
-  const [platformAdmins, setPlatformAdmins] = useState<PlatformAdmin[]>(INITIAL_PLATFORM_ADMINS);
+  const [transactions, setTransactions] = useState<PaymentTransaction[]>([]);
+  const [platformAdmins] = useState<PlatformAdmin[]>(INITIAL_PLATFORM_ADMINS);
 
-  const [departments, setDepartments] = useState<Department[]>(INITIAL_DEPARTMENTS);
-  const [tests, setTests] = useState<TestDefinition[]>(INITIAL_TESTS);
-  const [patients, setPatients] = useState<Patient[]>(INITIAL_PATIENTS);
-  const [requests, setRequests] = useState<TestRequest[]>(INITIAL_REQUESTS);
-  const [samples, setSamples] = useState<Sample[]>(INITIAL_SAMPLES);
-  const [results, setResults] = useState<TestResult[]>(INITIAL_RESULTS);
-  const [invoices, setInvoices] = useState<Invoice[]>(INITIAL_INVOICES);
-  const [staffList, setStaffList] = useState<StaffMember[]>(INITIAL_STAFF);
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>(INITIAL_AUDIT_LOGS);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [tests, setTests] = useState<TestDefinition[]>([]);
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [requests, setRequests] = useState<TestRequest[]>([]);
+  const [samples, setSamples] = useState<Sample[]>([]);
+  const [results, setResults] = useState<TestResult[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [staffList, setStaffList] = useState<StaffMember[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
 
   const [firebaseUser, setFirebaseUser] = useState<any>(null);
-  const [currentUserProfile, setCurrentUserProfile] = useState<AppUserProfile | null>({
-    uid: 'staff-pathologist-lab-apex',
-    displayName: 'Dr. Obinna Eze, MBBS, FMCPath',
-    email: 'dr.eze@apexdiagnostics.ng',
-    role: 'pathologist',
-    labId: 'lab-apex',
-    laboratoryName: 'Apex Clinical Diagnostics & Path Lab',
-    licenseNumber: 'MDCN/68902',
-    lastLoginAt: new Date().toISOString(),
-    isDemoAccount: true,
-  });
-  const [currentRole, setCurrentRole] = useState<UserRole>('pathologist');
+  const [isAuthReady, setIsAuthReady] = useState<boolean>(false);
+  const [currentUserProfile, setCurrentUserProfile] = useState<AppUserProfile | null>(null);
+  const [currentRole, setCurrentRole] = useState<UserRole>('receptionist');
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [isAuthLoading, setIsAuthLoading] = useState<boolean>(false);
+  const [sessionExpiredNotice, setSessionExpiredNotice] = useState<boolean>(false);
+
+  const hadActiveSessionRef = React.useRef<boolean>(false);
+  const isManualLogoutRef = React.useRef<boolean>(false);
+  const lastActivityRef = React.useRef<number>(Date.now());
 
   const [isFirestoreOnline, setIsFirestoreOnline] = useState<boolean>(true);
   const [selectedReportRequestId, setSelectedReportRequestId] = useState<string | null>(null);
   const [isPrintReportOpen, setIsPrintReportOpen] = useState<boolean>(false);
 
-  // 1. Initial Firestore Connection & Auth State Listener
+  const clearProtectedWorkspaceData = () => {
+    setLaboratories([]);
+    setCurrentLabId('');
+    setTransactions([]);
+    setDepartments([]);
+    setTests([]);
+    setPatients([]);
+    setRequests([]);
+    setSamples([]);
+    setResults([]);
+    setInvoices([]);
+    setStaffList([]);
+    setAuditLogs([]);
+  };
+
+  // 1. Initial Firestore Connection & Auth/Token Listener
   useEffect(() => {
     verifyFirestoreConnection()
       .then((connected) => setIsFirestoreOnline(connected))
       .catch(() => setIsFirestoreOnline(false));
 
     const unsubscribeAuth = subscribeToAuthState(async (user) => {
+      if (user && user.isAnonymous && !ENABLE_DEV_BYPASS_TOOLS) {
+        await logoutUser().catch(() => {});
+        setFirebaseUser(null);
+        setCurrentUserProfile(null);
+        clearProtectedWorkspaceData();
+        setIsAuthReady(true);
+        return;
+      }
+
       setFirebaseUser(user);
       if (user) {
+        hadActiveSessionRef.current = true;
+        isManualLogoutRef.current = false;
+        lastActivityRef.current = Date.now();
+        setSessionExpiredNotice(false);
         try {
-          const profile = await fetchUserProfile(user.uid);
+          const redirectProfile = await completeRedirectSignIn();
+          const profile =
+            redirectProfile && redirectProfile.uid === user.uid
+              ? redirectProfile
+              : await fetchUserProfile(user.uid, user.emailVerified);
           if (profile) {
             setCurrentUserProfile(profile);
             setCurrentRole(profile.role);
-            if (profile.labId) setCurrentLabId(profile.labId);
+            if (profile.labId && profile.labId !== 'unassigned') {
+              setCurrentLabId(profile.labId);
+            }
+          } else if (!user.isAnonymous && isTrustedPlatformAdminEmail(user.email, user.emailVerified)) {
+            const adminProfile: AppUserProfile = {
+              uid: user.uid,
+              email: (user.email || '').toLowerCase(),
+              displayName: user.displayName || 'Platform Super Administrator',
+              role: 'super_admin',
+              labId: 'lab-apex',
+              laboratoryName: 'Apex Clinical Diagnostics & Path Lab',
+              lastLoginAt: new Date().toISOString(),
+              isPlatformSuperAdmin: true,
+              isActive: true,
+            };
+            setCurrentUserProfile(adminProfile);
+            setCurrentRole('super_admin');
+            setCurrentLabId('lab-apex');
           }
         } catch (e) {
           console.warn('Profile fetch note:', e);
         }
+      } else {
+        const expiredUnexpectedly = hadActiveSessionRef.current && !isManualLogoutRef.current;
+        hadActiveSessionRef.current = false;
+        isManualLogoutRef.current = false;
+        setCurrentUserProfile(null);
+        setCurrentRole('receptionist');
+        clearProtectedWorkspaceData();
+        if (expiredUnexpectedly) {
+          setSessionExpiredNotice(true);
+        }
       }
+      setIsAuthReady(true);
     });
 
     return () => unsubscribeAuth();
   }, []);
 
+  // Periodic Token Validity & Idle Session Expiration Check
+  useEffect(() => {
+    if (!firebaseUser) return;
+
+    const recordActivity = () => {
+      lastActivityRef.current = Date.now();
+    };
+    const events: (keyof WindowEventMap)[] = ['mousedown', 'keydown', 'touchstart', 'scroll'];
+    events.forEach((evt) => window.addEventListener(evt, recordActivity, { passive: true }));
+
+    const checkSession = async () => {
+      const current = auth.currentUser;
+      if (!current) return;
+      const idleElapsed = Date.now() - lastActivityRef.current;
+      const tokenStillValid = await verifySessionValidity(current);
+      if (!tokenStillValid || idleElapsed > SESSION_IDLE_TIMEOUT_MS) {
+        hadActiveSessionRef.current = true;
+        isManualLogoutRef.current = false;
+        setSessionExpiredNotice(true);
+        await logoutUser().catch(() => {});
+      }
+    };
+
+    const handleVisibilityOrFocus = () => {
+      if (document.visibilityState === 'visible') {
+        checkSession();
+      }
+    };
+
+    const intervalId = window.setInterval(checkSession, 5 * 60 * 1000);
+    window.addEventListener('focus', handleVisibilityOrFocus);
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', handleVisibilityOrFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
+      events.forEach((evt) => window.removeEventListener(evt, recordActivity));
+    };
+  }, [firebaseUser]);
+
+  const isAuthenticated = Boolean(firebaseUser && currentUserProfile);
+
+  const isActualSuperAdmin = Boolean(
+    currentUserProfile &&
+      !currentUserProfile.isDemoAccount &&
+      firebaseUser &&
+      !firebaseUser.isAnonymous &&
+      isTrustedPlatformAdminEmail(
+        currentUserProfile.email || firebaseUser.email,
+        firebaseUser.emailVerified === true
+      )
+  );
+
   // 2. Tenant Bootstrap and Real-time Firestore Subscriptions for Active Laboratory
   useEffect(() => {
-    // Only bootstrap and attach listeners when authenticated
-    if (!firebaseUser) {
+    const activeUserLabId = currentUserProfile?.labId;
+    const effectiveLabId = currentLabId || activeUserLabId;
+    if (
+      !firebaseUser ||
+      !activeUserLabId ||
+      activeUserLabId === 'unassigned' ||
+      !effectiveLabId ||
+      effectiveLabId === 'unassigned' ||
+      currentUserProfile?.isActive === false
+    ) {
       return;
     }
 
-    // Bootstrap documents in Firestore for active lab
-    bootstrapTenantData(currentLabId).catch((err) => {
-      console.warn('Tenant bootstrap note:', err);
+    const canBootstrap =
+      isActualSuperAdmin || currentUserProfile?.role === 'lab_admin';
+
+    if (canBootstrap && effectiveLabId === 'lab-apex') {
+      bootstrapTenantData(effectiveLabId).catch((err) => {
+        console.warn('Tenant bootstrap note:', err);
+      });
+    }
+
+    const unsubLab = subscribeToLaboratory(effectiveLabId, (labDoc) => {
+      if (labDoc) {
+        setLaboratories((prev) => {
+          const exists = prev.some((l) => l.id === labDoc.id);
+          return exists ? prev.map((l) => (l.id === labDoc.id ? labDoc : l)) : [labDoc, ...prev];
+        });
+      }
     });
 
-    // Attach real-time Firestore listeners
-    const unsubPatients = subscribeToPatients(currentLabId, (data) => {
-      if (data && data.length > 0) setPatients(data);
+    const unsubAllLabs = isActualSuperAdmin
+      ? subscribeToAllLaboratories((labs) => {
+          if (labs.length > 0) {
+            setLaboratories(labs);
+          }
+        })
+      : () => {};
+
+    const unsubTransactions = isActualSuperAdmin
+      ? subscribeToTransactions((txs) => {
+          setTransactions(txs);
+        })
+      : () => {};
+
+    // Attach real-time Firestore listeners scoped to the active tenant
+    const unsubPatients = subscribeToPatients(effectiveLabId, (data) => {
+      setPatients(data);
     });
-    const unsubRequests = subscribeToRequests(currentLabId, (data) => {
-      if (data && data.length > 0) setRequests(data);
+    const unsubRequests = subscribeToRequests(effectiveLabId, (data) => {
+      setRequests(data);
     });
-    const unsubSamples = subscribeToSamples(currentLabId, (data) => {
-      if (data && data.length > 0) setSamples(data);
+    const unsubSamples = subscribeToSamples(effectiveLabId, (data) => {
+      setSamples(data);
     });
-    const unsubResults = subscribeToResults(currentLabId, (data) => {
-      if (data && data.length > 0) setResults(data);
+    const unsubResults = subscribeToResults(effectiveLabId, (data) => {
+      setResults(data);
     });
-    const unsubInvoices = subscribeToInvoices(currentLabId, (data) => {
-      if (data && data.length > 0) setInvoices(data);
+    const unsubInvoices = subscribeToInvoices(effectiveLabId, (data) => {
+      setInvoices(data);
     });
-    const unsubTests = subscribeToTests(currentLabId, (data) => {
-      if (data && data.length > 0) setTests(data);
+    const unsubTests = subscribeToTests(effectiveLabId, (data) => {
+      setTests(data);
     });
-    const unsubDepartments = subscribeToDepartments(currentLabId, (data) => {
-      if (data && data.length > 0) setDepartments(data);
+    const unsubDepartments = subscribeToDepartments(effectiveLabId, (data) => {
+      setDepartments(data);
     });
-    const unsubAudit = subscribeToAuditLogs(currentLabId, (data) => {
-      if (data && data.length > 0) setAuditLogs(data);
+    const unsubAudit = subscribeToAuditLogs(effectiveLabId, (data) => {
+      setAuditLogs(data);
     });
-    const unsubStaff = subscribeToStaff(currentLabId, (data) => {
-      if (data && data.length > 0) setStaffList(data);
+    const unsubStaff = subscribeToStaff(effectiveLabId, (data) => {
+      setStaffList(data);
     });
 
     return () => {
+      unsubLab();
+      unsubAllLabs();
+      unsubTransactions();
       unsubPatients();
       unsubRequests();
       unsubSamples();
@@ -312,22 +488,55 @@ export const LISProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       unsubAudit();
       unsubStaff();
     };
-  }, [currentLabId, firebaseUser]);
+  }, [currentLabId, firebaseUser, currentUserProfile?.labId, currentUserProfile?.isActive, isActualSuperAdmin]);
 
-  const currentLab = laboratories.find((lab) => lab.id === currentLabId) || laboratories[0];
+  const currentLab =
+    laboratories.find((lab) => lab.id === (currentLabId || currentUserProfile?.labId)) ||
+    laboratories[0] ||
+    (currentUserProfile?.labId && currentUserProfile.labId !== 'unassigned'
+      ? {
+          ...NEUTRAL_PLACEHOLDER_LAB,
+          id: currentUserProfile.labId,
+          name: currentUserProfile.laboratoryName || 'Laboratory Workspace',
+        }
+      : NEUTRAL_PLACEHOLDER_LAB);
 
-  const isPlatformSuperAdmin = Boolean(
-    currentUserProfile?.role === 'super_admin' ||
-    currentUserProfile?.isPlatformSuperAdmin ||
-    currentUserProfile?.email === 'admin@labpro.health' ||
-    currentUserProfile?.email === 'gsuraju20@gmail.com'
-  );
+  // Role simulation is STRICTLY limited to explicit opt-in dev tooling for verified platform admin
+  const canSimulateRole = ENABLE_DEV_BYPASS_TOOLS && isActualSuperAdmin;
+
+  const effectiveRole: UserRole = !isAuthenticated
+    ? 'receptionist'
+    : canSimulateRole
+    ? currentRole
+    : currentUserProfile?.role === 'super_admin' && !isActualSuperAdmin
+    ? 'receptionist'
+    : currentUserProfile?.role || 'receptionist';
+
+  const isPlatformSuperAdmin = isActualSuperAdmin;
+
+  const setCurrentRoleSafe = (role: UserRole) => {
+    if (!canSimulateRole) {
+      console.warn('RBAC Guard: Role simulation is disabled in production and for standard personnel accounts.');
+      return;
+    }
+    setCurrentRole(role);
+  };
+
+  const assertAction = (action: LISAction, description: string) => {
+    if (!isAuthenticated) {
+      throw new Error('Authentication Required: Please sign in to perform this action.');
+    }
+    if (!canPerformAction(action, effectiveRole, isPlatformSuperAdmin)) {
+      throw new Error(`Access Denied (${effectiveRole}): Insufficient permissions to ${description}.`);
+    }
+  };
 
   const handleSetCurrentLabId = (labId: string) => {
     // Platform Super Admins can switch between any lab workspace
-    // Regular lab staff and admins are isolated to their registered labId
-    if (!isPlatformSuperAdmin && currentUserProfile?.labId && currentUserProfile.labId !== labId) {
-      console.warn(`Tenant Isolation Guard: User assigned to ${currentUserProfile.labId} cannot access ${labId}`);
+    // Regular lab staff and admins are strictly isolated to their registered labId
+    if (!isAuthenticated) return;
+    if (!isPlatformSuperAdmin && currentUserProfile?.labId !== labId) {
+      console.warn(`Tenant Isolation Guard: User assigned to ${currentUserProfile?.labId} cannot access ${labId}`);
       return;
     }
     setCurrentLabId(labId);
@@ -344,19 +553,48 @@ export const LISProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const scopedStaffList = staffList.filter((s) => s.labId === currentLab.id);
   const scopedAuditLogs = auditLogs.filter((log) => log.labId === currentLab.id);
 
+  const fallbackStaffMember: StaffMember = {
+    id: currentUserProfile?.uid || 'unassigned-staff',
+    labId: currentLab.id,
+    fullName: currentUserProfile?.displayName || 'Authorized Personnel',
+    email: currentUserProfile?.email || '',
+    role: effectiveRole,
+    licenseNumber: currentUserProfile?.licenseNumber,
+    isActive: true,
+    joinedAt: new Date().toISOString().slice(0, 10),
+  };
+
+  const matchedStaffRecord = currentUserProfile?.email
+    ? scopedStaffList.find(
+        (s) => s.email.toLowerCase() === currentUserProfile.email.toLowerCase()
+      )
+    : undefined;
+
+  const isStaffSuspended = Boolean(
+    currentUserProfile &&
+      (currentUserProfile.isActive === false || matchedStaffRecord?.isActive === false)
+  );
+
   const currentStaff =
-    scopedStaffList.find((s) => s.role === currentRole) ||
-    staffList.find((s) => s.role === currentRole && s.labId === currentLab.id) ||
-    staffList[0];
+    matchedStaffRecord ||
+    scopedStaffList.find((s) => s.role === effectiveRole) ||
+    staffList.find((s) => s.role === effectiveRole && s.labId === currentLab.id) ||
+    scopedStaffList[0] ||
+    fallbackStaffMember;
 
   // Auth Functions
-  const loginGoogle = async () => {
+  const loginGoogle = async (): Promise<AppUserProfile> => {
     setIsAuthLoading(true);
     try {
-      const profile = await loginWithGoogle(currentLab.id, currentRole);
+      const profile = await loginWithGoogle();
+      setSessionExpiredNotice(false);
       setCurrentUserProfile(profile);
       setCurrentRole(profile.role);
-      addAuditLog('STAFF_LOGIN', 'staff', profile.uid, `Personnel ${profile.displayName} logged in via Google OAuth.`);
+      if (profile.labId && profile.labId !== 'unassigned') {
+        setCurrentLabId(profile.labId);
+        addAuditLog('STAFF_LOGIN', 'staff', profile.uid, `Personnel ${profile.displayName} logged in via Google OAuth.`);
+      }
+      return profile;
     } finally {
       setIsAuthLoading(false);
     }
@@ -369,9 +607,13 @@ export const LISProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     labId: string;
     licenseNumber?: string;
   }) => {
+    if (!ENABLE_DEV_BYPASS_TOOLS) {
+      throw new Error('Development staff quick-login is disabled.');
+    }
     setIsAuthLoading(true);
     try {
       const profile = await loginAsStaffMember(info);
+      setSessionExpiredNotice(false);
       setCurrentUserProfile(profile);
       setCurrentRole(profile.role);
       addAuditLog('STAFF_LOGIN', 'staff', profile.uid, `Personnel ${profile.displayName} authorized as ${profile.role}.`);
@@ -381,9 +623,14 @@ export const LISProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const logout = async () => {
-    await logoutUser();
+    isManualLogoutRef.current = true;
+    hadActiveSessionRef.current = false;
+    setSessionExpiredNotice(false);
+    setIsAuthModalOpen(false);
     setCurrentUserProfile(null);
-    setIsAuthModalOpen(true);
+    setCurrentRole('receptionist');
+    clearProtectedWorkspaceData();
+    await logoutUser();
   };
 
   const addAuditLog = (
@@ -393,7 +640,7 @@ export const LISProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     details: string
   ) => {
     const operatorName = currentUserProfile?.displayName || currentStaff.fullName;
-    const operatorRole = currentRole;
+    const operatorRole = effectiveRole;
 
     const newLog: AuditLog = {
       id: `log-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -409,15 +656,19 @@ export const LISProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setAuditLogs((prev) => [newLog, ...prev]);
 
-    // Persist to Cloud Firestore
-    addAuditLogToFirestore(currentLab.id, newLog).catch((e) =>
-      console.warn('Audit firestore write:', e)
-    );
+    // Persist to Cloud Firestore when authenticated to a real tenant
+    if (firebaseUser && currentUserProfile?.labId && currentUserProfile.labId !== 'unassigned') {
+      addAuditLogToFirestore(currentLab.id, newLog).catch((e) =>
+        console.warn('Audit firestore write:', e)
+      );
+    }
   };
 
   const createLaboratory = (labData: Omit<Laboratory, 'id' | 'createdAt'>): Laboratory => {
+    assertAction('platform_admin', 'provision a new laboratory workspace directly');
     const newLab: Laboratory = {
       ...labData,
+      ownerUid: firebaseUser?.uid,
       id: `lab-${Date.now()}`,
       createdAt: new Date().toISOString(),
     };
@@ -433,6 +684,7 @@ export const LISProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateLaboratorySettings = (settingsData: Partial<Laboratory>) => {
+    assertAction('manage_settings', 'update laboratory configuration');
     setLaboratories((prev) =>
       prev.map((lab) => (lab.id === currentLab.id ? { ...lab, ...settingsData, updatedAt: new Date().toISOString() } : lab))
     );
@@ -443,6 +695,11 @@ export const LISProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addStaffMember = (member: Omit<StaffMember, 'id' | 'labId' | 'joinedAt'>) => {
+    assertAction('manage_staff', 'add or invite laboratory staff');
+    if (member.role === 'super_admin' && !isPlatformSuperAdmin) {
+      throw new Error('Access Denied: Only Platform Super Administrators may assign super_admin.');
+    }
+
     const activePlan = plans.find((p) => p.id === (currentLab.subscription?.planId || currentLab.planId)) || plans[0];
     const currentStaffCount = staffList.filter((s) => s.labId === currentLab.id).length;
     if (activePlan.limits.maxStaff !== -1 && currentStaffCount >= activePlan.limits.maxStaff) {
@@ -460,6 +717,19 @@ export const LISProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addStaffToFirestore(currentLab.id, newStaff).catch((err) =>
       console.warn('Staff add firestore note:', err)
     );
+    createStaffInvitationInFirestore({
+      id: `inv-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      labId: currentLab.id,
+      laboratoryName: currentLab.name,
+      email: newStaff.email.trim().toLowerCase(),
+      fullName: newStaff.fullName,
+      role: newStaff.role,
+      department: newStaff.department,
+      licenseNumber: newStaff.licenseNumber,
+      status: 'pending',
+      createdByUid: firebaseUser?.uid,
+      createdAt: new Date().toISOString(),
+    }).catch((err) => console.warn('Invitation create firestore note:', err));
     addAuditLog('STAFF_ADDED', 'staff', newStaff.id, `Added staff member ${newStaff.fullName} as ${newStaff.role}`);
   };
 
@@ -481,10 +751,16 @@ export const LISProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     paymentProvider: 'paystack' | 'flutterwave';
     isTrial?: boolean;
   }): Promise<Laboratory> => {
+    const activeAuthUser = auth.currentUser;
+    if (!activeAuthUser || activeAuthUser.isAnonymous) {
+      throw new Error('Authentication Required: Please sign in with your Google Workspace account before registering a laboratory.');
+    }
+
     const newLabId = `lab-${data.code.toLowerCase().replace(/[^a-z0-9]/g, '')}-${Date.now().toString().slice(-4)}`;
     const plan = plans.find((p) => p.id === data.planId) || plans[0];
     const now = new Date();
     const periodEnd = new Date(now.getTime() + (data.isTrial ? 14 : data.billingCycle === 'annual' ? 365 : 30) * 86400000);
+    const verifiedAdminEmail = (activeAuthUser.email || data.adminEmail).trim().toLowerCase();
 
     const subscription: LaboratorySubscription = {
       id: `sub-${Date.now()}`,
@@ -510,7 +786,8 @@ export const LISProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       code: data.code,
       licenseNumber: data.licenseNumber,
       email: data.email,
-      ownerEmail: data.adminEmail,
+      ownerEmail: verifiedAdminEmail,
+      ownerUid: activeAuthUser.uid,
       phone: data.phone,
       address: data.address,
       currency: data.currency,
@@ -529,7 +806,7 @@ export const LISProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       id: `staff-${Date.now()}`,
       labId: newLabId,
       fullName: data.adminName,
-      email: data.adminEmail,
+      email: verifiedAdminEmail,
       role: 'lab_admin',
       department: 'Laboratory Executive',
       licenseNumber: data.adminLicense || 'MDCN/LAB/ADM',
@@ -571,8 +848,9 @@ export const LISProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createdAt: now.toISOString(),
     }));
 
+    let paymentTx: PaymentTransaction | null = null;
     if (!data.isTrial) {
-      const tx: PaymentTransaction = {
+      paymentTx = {
         id: `pay-${Date.now()}`,
         labId: newLabId,
         laboratoryName: data.name,
@@ -584,26 +862,41 @@ export const LISProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         status: 'success',
         provider: data.paymentProvider,
         reference: `PSTK_${Date.now()}_${Math.floor(Math.random() * 90000 + 10000)}`,
-        customerEmail: data.adminEmail,
+        customerEmail: verifiedAdminEmail,
         paidAt: now.toISOString(),
         createdAt: now.toISOString(),
         invoiceNumber: `SAAS-INV-${new Date().getFullYear()}-${Date.now().toString().slice(-4)}`,
         paymentMethod: 'Paystack Card / Direct Settlement',
       };
-      setTransactions((prev) => [tx, ...prev]);
+      setTransactions((prev) => [paymentTx!, ...prev]);
     }
+
+    await saveLaboratorySettingsToFirestore(newLabId, newLab);
+    const ownerProfile = await assignLabOwnerProfile({
+      uid: activeAuthUser.uid,
+      email: verifiedAdminEmail,
+      displayName: activeAuthUser.displayName || data.adminName,
+      labId: newLabId,
+      laboratoryName: data.name,
+      licenseNumber: data.adminLicense,
+    });
 
     setLaboratories((prev) => [newLab, ...prev]);
     setStaffList((prev) => [newAdminStaff, ...prev]);
     setDepartments((prev) => [...prev, ...newDeps]);
     setTests((prev) => [...prev, ...starterTests]);
+    setCurrentUserProfile(ownerProfile);
+    setCurrentRole(ownerProfile.role);
     setCurrentLabId(newLabId);
-    setCurrentRole('lab_admin');
 
-    saveLaboratorySettingsToFirestore(newLabId, newLab).catch(() => {});
+    saveSubscriptionToFirestore(subscription).catch(() => {});
+    if (paymentTx) {
+      savePaymentTransactionToFirestore(paymentTx).catch(() => {});
+    }
     addStaffToFirestore(newLabId, newAdminStaff).catch(() => {});
     newDeps.forEach((dep) => addDepartmentToFirestore(newLabId, dep).catch(() => {}));
     starterTests.forEach((t) => addTestToFirestore(newLabId, t).catch(() => {}));
+
     return newLab;
   };
 
@@ -613,6 +906,7 @@ export const LISProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     billingCycle: SubscriptionBillingCycle,
     paymentProvider: 'paystack' | 'flutterwave' = 'paystack'
   ) => {
+    assertAction('manage_subscription', 'update laboratory subscription');
     const targetPlan = plans.find((p) => p.id === planId) || plans[0];
     const now = new Date();
     const periodEnd = new Date(now.getTime() + (billingCycle === 'annual' ? 365 : 30) * 86400000);
@@ -679,6 +973,7 @@ export const LISProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const toggleLaboratorySuspension = (labId: string, reason?: string) => {
+    assertAction('platform_admin', 'suspend or reactivate laboratory workspaces');
     const targetLab = laboratories.find((l) => l.id === labId);
     if (!targetLab) return;
     const nextStatus: 'active' | 'suspended' = targetLab.status === 'suspended' ? 'active' : 'suspended';
@@ -704,18 +999,21 @@ export const LISProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updatePlanPricing = (planId: SubscriptionPlanId, monthlyPrice: number, annualPrice: number) => {
+    assertAction('platform_admin', 'update platform subscription plan pricing');
     setPlans((prev) =>
       prev.map((p) => (p.id === planId ? { ...p, monthlyPrice, annualPrice } : p))
     );
   };
 
   const updatePlanLimits = (planId: SubscriptionPlanId, limits: Partial<PlanLimits>) => {
+    assertAction('platform_admin', 'update platform subscription plan limits');
     setPlans((prev) =>
       prev.map((p) => (p.id === planId ? { ...p, limits: { ...p.limits, ...limits } } : p))
     );
   };
 
   const toggleStaffStatus = (staffId: string) => {
+    assertAction('manage_staff', 'activate or suspend staff accounts');
     const target = staffList.find((s) => s.id === staffId);
     if (!target) return;
     const nextStatus = !target.isActive;
@@ -726,9 +1024,11 @@ export const LISProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     updateStaffInFirestore(currentLab.id, staffId, { isActive: nextStatus }).catch((err) =>
       console.warn('Staff update firestore note:', err)
     );
+    updateUserActiveStatusInLab(currentLab.id, target.email, nextStatus).catch(() => {});
   };
 
   const addDepartment = (dep: Omit<Department, 'id' | 'labId'>) => {
+    assertAction('manage_settings', 'add laboratory departments');
     const activePlan = plans.find((p) => p.id === (currentLab.subscription?.planId || currentLab.planId)) || plans[0];
     if (activePlan.limits.maxDepartments !== -1 && scopedDepartments.length >= activePlan.limits.maxDepartments) {
       alert(`Department Quota Reached: Your current ${activePlan.name} plan permits up to ${activePlan.limits.maxDepartments} departments. Please upgrade your subscription.`);
@@ -747,6 +1047,7 @@ export const LISProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateDepartment = (id: string, updated: Partial<Department>) => {
+    assertAction('manage_settings', 'update laboratory departments');
     setDepartments((prev) => prev.map((d) => (d.id === id ? { ...d, ...updated } : d)));
     updateDepartmentInFirestore(currentLab.id, id, updated).catch((e) =>
       console.warn('Dept update firestore:', e)
@@ -754,6 +1055,7 @@ export const LISProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addTestDefinition = (testData: Omit<TestDefinition, 'id' | 'labId' | 'createdAt'>) => {
+    assertAction('manage_catalogue', 'add tests to the catalogue');
     const newTest: TestDefinition = {
       ...testData,
       id: `test-${Date.now()}`,
@@ -768,6 +1070,7 @@ export const LISProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateTestDefinition = (id: string, updated: Partial<TestDefinition>) => {
+    assertAction('manage_catalogue', 'update test catalogue entries');
     setTests((prev) => prev.map((t) => (t.id === id ? { ...t, ...updated } : t)));
     updateTestInFirestore(currentLab.id, id, updated).catch((e) =>
       console.warn('Test update firestore:', e)
@@ -776,6 +1079,7 @@ export const LISProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addPatient = (patientData: Omit<Patient, 'id' | 'labId' | 'createdAt' | 'patientIdNumber'>): Patient => {
+    assertAction('manage_patients', 'register new patients');
     const nextSeq = String(scopedPatients.length + 1).padStart(4, '0');
     const newPatient: Patient = {
       ...patientData,
@@ -795,6 +1099,7 @@ export const LISProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updatePatient = (id: string, updated: Partial<Patient>) => {
+    assertAction('manage_patients', 'update patient records');
     setPatients((prev) => prev.map((p) => (p.id === id && p.labId === currentLab.id ? { ...p, ...updated, updatedAt: new Date().toISOString() } : p)));
     updatePatientInFirestore(currentLab.id, id, updated).catch((e) =>
       console.warn('Patient update firestore:', e)
@@ -814,6 +1119,7 @@ export const LISProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     initialPayment?: number;
     paymentMethod?: string;
   }): TestRequest => {
+    assertAction('create_request', 'create diagnostic test requests');
     if (currentLab.status === 'suspended' || currentLab.subscription?.status === 'expired') {
       alert(`Diagnostic Processing Locked: ${currentLab.name} workspace is currently ${currentLab.status || 'expired'}. Please renew or reactivate under Subscription & Licensing.`);
       throw new Error('Laboratory subscription is inactive or suspended.');
@@ -946,6 +1252,7 @@ export const LISProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const collectSample = (sampleId: string, collectedBy: string) => {
+    assertAction('manage_samples', 'record sample collection');
     const operator = collectedBy || currentUserProfile?.displayName || currentStaff.fullName;
     setSamples((prev) =>
       prev.map((s) =>
@@ -974,6 +1281,7 @@ export const LISProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const receiveSample = (sampleId: string, receivedBy: string) => {
+    assertAction('manage_samples', 'accession received samples');
     const operator = receivedBy || currentUserProfile?.displayName || currentStaff.fullName;
     setSamples((prev) =>
       prev.map((s) =>
@@ -1002,6 +1310,7 @@ export const LISProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const rejectSample = (sampleId: string, reason: string, notes?: string) => {
+    assertAction('manage_samples', 'reject compromised samples');
     setSamples((prev) =>
       prev.map((s) =>
         s.id === sampleId
@@ -1079,6 +1388,7 @@ export const LISProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     technicianComments?: string;
     submitForVerification: boolean;
   }) => {
+    assertAction('enter_results', 'enter or save laboratory test results');
     const request = requests.find((r) => r.id === data.requestId);
     const test = tests.find((t) => t.id === data.testId);
     const sample = samples.find((s) => s.id === data.sampleId);
@@ -1099,7 +1409,7 @@ export const LISProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         flags,
         status,
         technicianComments: data.technicianComments,
-        enteredBy: `${operatorName} (${currentRole})`,
+        enteredBy: `${operatorName} (${effectiveRole})`,
         enteredAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -1125,7 +1435,7 @@ export const LISProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         parameterValues: data.parameterValues,
         flags,
         technicianComments: data.technicianComments,
-        enteredBy: `${operatorName} (${currentRole})`,
+        enteredBy: `${operatorName} (${effectiveRole})`,
         enteredAt: new Date().toISOString(),
         createdAt: new Date().toISOString(),
       };
@@ -1151,6 +1461,7 @@ export const LISProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const verifyResult = (resultId: string, decision: 'approve' | 'reject' | 'return', comments: string) => {
+    assertAction('verify_results', 'verify, reject, or return diagnostic results');
     const result = results.find((r) => r.id === resultId);
     if (!result) return;
 
@@ -1163,7 +1474,7 @@ export const LISProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ...result,
       status: newStatus,
       verificationComments: comments,
-      verifiedBy: `${operatorName} (${currentRole})`,
+      verifiedBy: `${operatorName} (${effectiveRole})`,
       verifiedAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -1203,6 +1514,7 @@ export const LISProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     updatedValues: Record<string, string | number>,
     reason: string
   ) => {
+    assertAction('verify_results', 'amend verified diagnostic results');
     const result = results.find((r) => r.id === resultId);
     if (!result) return;
     const test = tests.find((t) => t.id === result.testId);
@@ -1234,6 +1546,7 @@ export const LISProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const recordPayment = (invoiceId: string, amount: number, paymentMethod: string) => {
+    assertAction('manage_billing', 'record patient payments');
     const inv = invoices.find((i) => i.id === invoiceId);
     if (!inv) return;
 
@@ -1267,7 +1580,7 @@ export const LISProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         r.id === inv.requestId ? { ...r, paymentStatus: newStatus, amountPaid: newPaid } : r
       )
     );
-    updateRequestStatusInFirestore(currentLab.id, inv.requestId, 'processing').catch(() => {});
+    updateRequestPaymentInFirestore(currentLab.id, inv.requestId, newStatus, newPaid).catch(() => {});
 
     addAuditLog(
       'PAYMENT_RECORDED',
@@ -1296,8 +1609,14 @@ export const LISProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         createLaboratory,
         updateLaboratorySettings,
         currentUserProfile,
-        currentRole,
-        setCurrentRole,
+        currentRole: effectiveRole,
+        setCurrentRole: setCurrentRoleSafe,
+        canSimulateRole,
+        isAuthReady,
+        isAuthenticated,
+        isStaffSuspended,
+        sessionExpiredNotice,
+        clearSessionExpiredNotice: () => setSessionExpiredNotice(false),
         currentStaff,
         staffList: scopedStaffList,
         addStaffMember,
